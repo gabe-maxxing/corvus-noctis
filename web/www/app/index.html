@@ -8,25 +8,30 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Corvus">
-<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="manifest" href="../manifest.json">
 <link rel="icon" type="image/png" href="../favicon.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="../icons/apple-touch-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="../icons/apple-touch-icon-167x167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/apple-touch-icon-180x180.png">
 <title>Corvus OS</title>
 <style>
   :root { color-scheme: dark; }
-  html, body { margin: 0; background: #0c0a10; color: #e8e4f0; font: 16px/1.4 ui-monospace, Menlo, monospace; }
-  body { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 10px;
-         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; }
-  canvas { width: min(100vw, calc((100dvh - 90px) * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated;
-           touch-action: none; display: block; }
-  form { display: flex; gap: 8px; width: min(100vw - 20px, 800px); }
-  input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 6px;
-          border: 2px solid #5b3f8c; background: #15111d; color: #ffd166; outline: none; }
+  html, body { margin: 0; background: #0c0a10; color: #e8e4f0; font: 16px/1.4 Menlo, ui-monospace, monospace; }
+  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 8px 0; box-sizing: border-box;
+         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  /* iOS 12: no aspect-ratio, dvh or clamp(). width + height:auto keeps the canvas 4:3. */
+  canvas { display: block; width: 100%; max-width: 800px; height: auto; image-rendering: pixelated;
+           touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  @media (min-aspect-ratio: 4/3) { canvas { width: auto; height: calc(100vh - 110px); max-width: none; } }
+  form { display: flex; width: 100%; max-width: 800px; padding: 8px 10px 0; box-sizing: border-box; }
+  input { -webkit-flex: 1; flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 6px;
+          border: 2px solid #5b3f8c; background: #15111d; color: #ffd166; outline: none; -webkit-appearance: none; }
   input:focus { border-color: #ffd166; }
-  button { font: inherit; font-size: 18px; padding: 10px 18px; border-radius: 6px; border: 2px solid #ffd166;
-           background: #5b3f8c; color: #ffd166; }
-  footer { color: #8a80a0; font-size: 13px; padding-bottom: 8px; }
+  button { font: inherit; font-size: 18px; padding: 10px 18px; margin-left: 8px; border-radius: 6px; border: 2px solid #ffd166;
+           background: #5b3f8c; color: #ffd166; -webkit-appearance: none; }
+  footer { color: #8a80a0; font-size: 13px; padding: 8px; text-align: center; }
   footer a { color: #8a80a0; }
-  #status { color: #8a80a0; }
 </style>
 </head>
 <body>
@@ -37,166 +42,6 @@
   <button type="submit">Enter</button>
 </form>
 <footer><span id="status">booting…</span> · Corvus OS web edition · <a href="../">get Corvus</a> · <a href="https://github.com/gabe-maxxing/corvus-noctis">source (MIT)</a></footer>
-<script type="module">
-import init, * as corvus from "./pkg/corvus_web.js";
-
-const canvas = document.getElementById("screen");
-const ctx = canvas.getContext("2d");
-const input = document.getElementById("input");
-const form = document.getElementById("line");
-const status = document.getElementById("status");
-
-const wasm = await init();
-const W = corvus.width(), H = corvus.height();
-corvus.boot();
-
-function draw() {
-  const bytes = new Uint8ClampedArray(wasm.memory.buffer, corvus.pixels(), W * H * 4);
-  ctx.putImageData(new ImageData(bytes, W, H), 0, 0);
-}
-
-// Same bytes a serial terminal would send: printable ASCII, CR, backspace.
-// `line` mirrors the shell's line buffer so web-only commands (dio) can be
-// caught on Enter without touching the kernel's dispatcher.
-let line = "";
-let busy = false;
-function type(text) {
-  if (busy) return;
-  for (const ch of text) {
-    const code = ch.charCodeAt(0);
-    if (code >= 32 && code < 127) {
-      corvus.key(code);
-      if (line.length < 128) line += ch;
-    }
-  }
-}
-function backspace() {
-  if (busy) return;
-  corvus.key(8);
-  line = line.slice(0, -1);
-}
-function enter() {
-  if (busy) return;
-  const match = line.trim().match(/^dio(?:\s+(.*))?$/);
-  if (match) {
-    for (let i = 0; i < line.length; i++) corvus.key(8); // take it back out of the shell
-    line = "";
-    corvus.write(`${match[0]}\n`);
-    dio(match[1] || "");
-  } else {
-    corvus.key(13);
-    line = "";
-  }
-}
-
-// Console writer for JS output: ASCII only, word-wrapped to the 76 columns.
-const COLS = 76;
-let col = 0, word = "";
-function ascii(text) {
-  return text.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/[\u2013\u2014]/g, "-")
-    .replace(/\u2026/g, "...").replace(/[^\x20-\x7e\n]/g, "");
-}
-function flushWord() {
-  if (!word) return;
-  if (col + word.length > COLS && col > 0) { corvus.write("\n"); col = 0; }
-  corvus.write(word);
-  col += word.length;
-  word = "";
-}
-function out(text) {
-  for (const ch of ascii(text)) {
-    if (ch === "\n") { flushWord(); corvus.write("\n"); col = 0; }
-    else if (ch === " ") { flushWord(); if (col > 0 && col < COLS) { corvus.write(" "); col++; } }
-    else word += ch;
-  }
-  draw();
-}
-function done() { flushWord(); col = 0; corvus.write("\ncorvus> "); draw(); }
-
-let dioModule = null;
-async function dio(question) {
-  if (!question.trim()) {
-    out("usage: dio <question>   e.g. dio what is virtue?");
-    return done();
-  }
-  busy = true;
-  status.textContent = "diogenes is lighting his lantern...";
-  let lastBar = -1;
-  const progress = (fraction, text) => {
-    const pct = Math.floor(fraction * 100);
-    status.textContent = `loading diogenes ${pct}% (first time only)`;
-    if (pct === lastBar) return;
-    lastBar = pct;
-    const filled = Math.round(fraction * 30);
-    corvus.write(`\r[${"#".repeat(filled)}${".".repeat(30 - filled)}] ${String(pct).padStart(3)}% loading lantern`);
-    draw();
-  };
-  try {
-    dioModule ??= await import("./dio.js");
-    let started = false;
-    const backend = await dioModule.ask(question, (text) => {
-      if (!started) {
-        started = true;
-        if (lastBar >= 0) corvus.write("\r" + " ".repeat(COLS - 1) + "\r");
-        out("dio> ");
-      }
-      out(text);
-    }, progress);
-    status.textContent = `running · dio via ${backend}`;
-  } catch (error) {
-    if (lastBar >= 0) corvus.write("\r" + " ".repeat(COLS - 1) + "\r");
-    out(`dio: ${error.message || error}\nneeds WebGPU (Safari 26+, Chrome) or a local Ollama: OLLAMA_ORIGINS=* ollama serve`);
-    status.textContent = "running";
-  }
-  busy = false;
-  done();
-}
-
-input.addEventListener("input", () => {
-  type(input.value);
-  input.value = "";
-  draw();
-});
-input.addEventListener("keydown", (event) => {
-  if (event.key === "Backspace") { backspace(); draw(); event.preventDefault(); }
-});
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  type(input.value);
-  input.value = "";
-  enter();
-  draw();
-});
-
-function toFramebuffer(event) {
-  const r = canvas.getBoundingClientRect();
-  return [Math.floor((event.clientX - r.left) * W / r.width), Math.floor((event.clientY - r.top) * H / r.height)];
-}
-canvas.addEventListener("pointerdown", (event) => {
-  const [x, y] = toFramebuffer(event);
-  if (busy) return;
-  if (x >= 572 && x < 784 && y >= 16 && y < 136) line = ""; // HELP clears the line, like the kernel
-  corvus.pointer(x, y, true);
-  draw();
-  if (!(x >= 572 && x < 784 && y >= 16 && y < 136)) input.focus();
-});
-for (const name of ["pointerup", "pointercancel", "pointerleave"]) {
-  canvas.addEventListener(name, (event) => {
-    const [x, y] = toFramebuffer(event);
-    corvus.pointer(x, y, false);
-    draw();
-  });
-}
-
-function frame(now) {
-  if (corvus.tick(now)) draw();
-  requestAnimationFrame(frame);
-}
-draw();
-requestAnimationFrame(frame);
-status.textContent = "running";
-if (matchMedia("(pointer: fine)").matches) input.focus();
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

@@ -37,16 +37,11 @@ jobs:
           key: wasm-bindgen-cli-${{ env.WASM_BINDGEN }}
       - name: Install wasm-bindgen-cli
         run: command -v wasm-bindgen || cargo install wasm-bindgen-cli --version "=$WASM_BINDGEN" --locked
-      - name: Build web edition
-        run: |
-          cd web
-          cargo build --release
-          wasm-bindgen --target web --no-typescript --out-dir www/app/pkg \
-            target/wasm32-unknown-unknown/release/corvus_web.wasm
-      - name: Serve the Unix installer and the Diogenes persona
-        run: |
-          cp dist/install.sh web/www/install.sh
-          cp diogenes/DIOGENES.md web/www/app/diogenes.md
+      - name: Build site (MVP wasm + ES2017 checks for iOS 12, service worker per commit)
+        run: .github/scripts/build-web.sh "${SHA:0:12}"
+        shell: bash
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
