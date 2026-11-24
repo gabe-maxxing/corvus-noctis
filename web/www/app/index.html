@@ -53,6 +53,28 @@
   input:focus { border-color: #ffd166; }
   button { font: inherit; font-size: 18px; padding: 10px 18px; margin-left: 8px; border-radius: 6px; border: 2px solid #ffd166;
            background: #5b3f8c; color: #ffd166; -webkit-appearance: none; }
+  #chips { width: 100%; max-width: 800px; padding: 6px 6px 0; box-sizing: border-box; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+  .chip { font: inherit; font-size: 16px; margin: 4px; padding: 8px 14px; min-height: 40px; border-radius: 20px; border: 2px solid #5b3f8c;
+          background: #15111d; color: #e8e4f0; -webkit-appearance: none; cursor: pointer; }
+  .chip.hot { border-color: #ffd166; color: #ffd166; -webkit-animation: pulse 1.2s ease-in-out 3; animation: pulse 1.2s ease-in-out 3; }
+  @-webkit-keyframes pulse { 50% { background: #2a1f45; } }
+  @keyframes pulse { 50% { background: #2a1f45; } }
+  /* Welcome tour: the crow talks from the bottom; the console stays usable. */
+  #tour { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  #tour .card { max-width: 760px; margin: 0 auto; background: #2a1f45; border: 3px solid #ffd166; box-shadow: 0 -6px 0 #0c0a10; padding: 12px 14px;
+                display: -webkit-flex; display: flex; -webkit-align-items: flex-start; align-items: flex-start; }
+  #tour img { width: 56px; height: 56px; margin-right: 12px; -webkit-flex: none; flex: none; }
+  #tour .say { -webkit-flex: 1; flex: 1; }
+  #tour p { margin: 0 0 8px; color: #f2eefa; }
+  #tour code { color: #ffd166; }
+  #tour a { color: #c9a7ff; }
+  #tour .tbar { height: 8px; border: 2px solid #5b3f8c; margin: 4px 0 8px; }
+  #tour .tbar i { display: block; height: 100%; width: 0; background: #ffd166; -webkit-transition: width 0.3s; transition: width 0.3s; }
+  #tour .row { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; -webkit-align-items: center; align-items: center; }
+  #tour .row span { color: #b9b2c8; font-size: 14px; }
+  #tour button { font: inherit; font-size: 16px; padding: 8px 16px; margin-left: 8px; border: 2px solid #ffd166; background: #5b3f8c; color: #ffd166; -webkit-appearance: none; }
+  #tour button.ghost { border-color: #5c5470; background: transparent; color: #b9b2c8; }
+  [hidden] { display: none !important; }
   footer { color: #8a80a0; font-size: 13px; padding: 8px; text-align: center; }
   footer a { color: #8a80a0; }
   /* Boot splash: the crow lights the lantern while the wasm loads. */
@@ -85,7 +107,19 @@
          spellcheck="false" enterkeyhint="send" aria-label="Corvus shell input">
   <button type="submit">Enter</button>
 </form>
+<div id="chips" aria-label="Suggestions"></div>
 <footer><span id="status">booting…</span> · Corvus OS web edition · <a href="../">get Corvus</a> · <a href="https://github.com/gabe-maxxing/corvus-noctis">source (MIT)</a></footer>
-<script type="module" src="app.js"></script>
+<div id="tour" hidden role="dialog" aria-label="Welcome tour">
+  <div class="card">
+    <img src="../icons/icon-192.png" alt="">
+    <div class="say">
+      <p id="tour-text"></p>
+      <div class="tbar"><i id="tour-bar"></i></div>
+      <div class="row"><span id="tour-label"></span>
+        <div><button type="button" class="ghost" id="tour-skip">skip</button><button type="button" id="tour-next">next</button></div></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="tour.js"></script>
 </body>
 </html>

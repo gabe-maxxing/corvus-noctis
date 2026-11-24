@@ -22,6 +22,7 @@ var CORE = [
   "app/",
   "app/index.html",
   "app/app.js",
+  "app/tour.js",
   "app/dio.js",
   "app/diogenes.md",
   "app/pkg/corvus_web.js",
