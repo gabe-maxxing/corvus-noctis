@@ -49,23 +49,85 @@ function backspace() {
 var webCommands = {}; // name -> function(args): commands that live in JS, not in the kernel shell
 export function webCommand(name, fn) { webCommands[name] = fn; }
 
+// Kernel shell commands (src/shell.rs) and the web-only ones, for suggestions.
+// Same vocabulary as COMMANDS in src/shell.rs, plus the web-only `tour`.
+export var KNOWN = ["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit", "tour"];
+
+/// Closest known command (Levenshtein), like the kernel's "Did you mean".
+export function closest(word) {
+  var best = KNOWN[0], distance = Infinity;
+  KNOWN.forEach(function (c) {
+    var row = [];
+    for (var j = 0; j <= c.length; j++) row[j] = j;
+    for (var i = 0; i < word.length; i++) {
+      var diagonal = row[0];
+      row[0] = i + 1;
+      for (var k = 0; k < c.length; k++) {
+        var old = row[k + 1];
+        row[k + 1] = Math.min(row[k] + 1, old + 1, diagonal + (word[i].toLowerCase() === c[k] ? 0 : 1));
+        diagonal = old;
+      }
+    }
+    if (row[c.length] < distance) { distance = row[c.length]; best = c; }
+  });
+  return best;
+}
+
+// History and Tab live in JS for the web console: the kernel's own recall would
+// rewrite its line buffer behind this file's back. Up/Down recall, Tab completes.
+var recallList = [], recallAt = 0, recallDraft = "";
+function remember(text) {
+  if (text && recallList[recallList.length - 1] !== text) recallList.push(text);
+  if (recallList.length > 32) recallList.shift();
+  recallAt = recallList.length;
+}
+function recall(up) {
+  if (!recallList.length) return;
+  if (up && recallAt === recallList.length) recallDraft = line;
+  recallAt = up ? Math.max(0, recallAt - 1) : Math.min(recallList.length, recallAt + 1);
+  prefill(recallAt === recallList.length ? recallDraft : recallList[recallAt]);
+}
+var completeListeners = [];
+export function onComplete(fn) { completeListeners.push(fn); }
+function complete() {
+  if (dioMode || line.indexOf(" ") >= 0) return;
+  var matches = KNOWN.filter(function (c) { return c.indexOf(line) === 0; });
+  if (matches.length === 1) prefill(matches[0] + " ");
+  else if (matches.length > 1) completeListeners.forEach(function (fn) { fn(matches); });
+}
+var dioMode = false; // like the kernel's llm_mode: every line goes to Diogenes until "exit"
+export function inDioMode() { return dioMode; }
+
 function enter() {
   if (busy) return;
   var typed = line;
   var trimmed = typed.trim();
   var name = trimmed.split(/\s+/)[0];
   line = "";
-  if (webCommands.hasOwnProperty(name)) {
+  remember(trimmed);
+  var handler = null, args = "";
+  if (dioMode && trimmed === "exit") { handler = function () { dioMode = false; setPrompt(); }; }
+  else if (trimmed.charAt(0) === "?") { handler = webCommands.dio; args = trimmed.slice(1).trim() || "?"; }
+  else if (dioMode && trimmed) { handler = webCommands.dio; args = trimmed; }
+  else if (webCommands.hasOwnProperty(name)) { handler = webCommands[name]; args = trimmed.slice(name.length).trim(); }
+  if (handler) {
     for (var i = 0; i < typed.length; i++) corvus.key(8); // take it back out of the shell
     corvus.write(trimmed + "\n");
-    Promise.resolve(webCommands[name](trimmed.slice(name.length).trim())).then(done, function (error) {
+    fresh = true;
+    Promise.resolve(handler(args)).then(done, function (error) {
       out("error: " + (error && error.message ? error.message : error));
       done();
     });
+  } else if (dioMode) {
+    for (var j = 0; j < typed.length; j++) corvus.key(8);
+    corvus.write("\n");
+    fresh = true;
+    done();
   } else {
     corvus.key(13);
   }
-  listeners.forEach(function (fn) { fn(trimmed, name); });
+  var unknown = !handler && !dioMode && name !== "" && KNOWN.indexOf(name) < 0;
+  listeners.forEach(function (fn) { fn(trimmed, name, unknown); });
 }
 
 /// Types a whole command and presses Enter, like a person would.
@@ -86,7 +148,7 @@ export function prefill(text) {
 }
 
 // Console writer for JS output: ASCII only, word-wrapped to the 76 columns.
-var col = 0, word = "";
+var col = 0, word = "", fresh = false; // fresh: cursor at the start of a line after an echo
 function ascii(text) {
   return text.normalize("NFKD").replace(/[̀-ͯ]/g, "")
     .replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-")
@@ -101,6 +163,7 @@ function flushWord() {
 }
 export function out(text) {
   var clean = ascii(text);
+  if (clean) fresh = false;
   for (var i = 0; i < clean.length; i++) {
     var ch = clean[i];
     if (ch === "\n") { flushWord(); corvus.write("\n"); col = 0; }
@@ -111,13 +174,22 @@ export function out(text) {
 }
 /// Raw console write (no wrapping), e.g. for "\r" progress bars.
 export function raw(text) { corvus.write(text); draw(); }
-function done() { flushWord(); col = 0; corvus.write("\ncorvus> "); draw(); }
+var promptText = "corvus> ";
+function setPrompt() { promptText = dioMode ? "diogenes> " : "corvus> "; }
+function done() { flushWord(); corvus.write((fresh ? "" : "\n") + promptText); col = 0; fresh = false; draw(); }
+/// Enters Diogenes mode as if "dio" was typed (used by the tour for non-technical people).
+export function openDioMode() {
+  if (busy || dioMode) return;
+  run("dio");
+}
 export function setBusy(value) { busy = value; }
 
 // --- dio: ask Diogenes ---------------------------------------------------
 webCommand("dio", function (question) {
   if (!question) {
-    out("usage: dio <question>   e.g. dio what is virtue?");
+    dioMode = true;
+    setPrompt();
+    out("Talk plainly. Type exit to return.");
     return;
   }
   busy = true;
@@ -157,7 +229,11 @@ input.addEventListener("input", function () {
   draw();
 });
 input.addEventListener("keydown", function (event) {
-  if (event.key === "Backspace" || event.keyCode === 8) { backspace(); draw(); event.preventDefault(); }
+  var k = event.key || "", code = event.keyCode;
+  if (k === "Backspace" || code === 8) { backspace(); draw(); event.preventDefault(); }
+  else if (k === "ArrowUp" || k === "Up" || code === 38) { recall(true); event.preventDefault(); }
+  else if (k === "ArrowDown" || k === "Down" || code === 40) { recall(false); event.preventDefault(); }
+  else if (k === "Tab" || code === 9) { type(input.value); input.value = ""; complete(); event.preventDefault(); }
 });
 form.addEventListener("submit", function (event) {
   event.preventDefault();
