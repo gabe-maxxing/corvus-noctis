@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod calc;
 mod console;
 mod frames;
 mod ramfb;
@@ -63,7 +64,7 @@ fn command(line: &str) {
     let line = line.trim();
     match line {
         "" => {}
-        "help" => print("help  about  crow  clear  echo <text>\n"),
+        "help" => print("help  about  crow  clear  echo <text>  calc <expr>\n"),
         "about" => print("Corvus OS 0.2 | Rust bare metal | QEMU virt | ramfb + virtio-tablet\n"),
         "crow" => banner(),
         "clear" => print("\x1b[2J\x1b[H"),
@@ -71,8 +72,34 @@ fn command(line: &str) {
             if let Some(message) = line.strip_prefix("echo ") {
                 print(message);
                 print("\n");
+            } else if line == "calc" || line.starts_with("calc ") {
+                calculate(line[4..].trim_start());
             } else {
                 print("Unknown command. Try help.\n");
+            }
+        }
+    }
+}
+
+/// `calc <expr>`: 64-bit integer arithmetic with + - * / % and parentheses.
+fn calculate(expression: &str) {
+    match calc::eval(expression) {
+        Ok(value) => {
+            let mut digits = [0u8; 20];
+            print(calc::format(value, &mut digits));
+            print("\n");
+        }
+        Err(error) => {
+            print("calc: ");
+            print(error.message());
+            if let Some(column) = error.column() {
+                let mut digits = [0u8; 20];
+                print(" at column ");
+                print(calc::format(column as i64, &mut digits));
+            }
+            print("\n");
+            if error == calc::Error::Empty {
+                print("usage: calc (2 + 3) * 4\n");
             }
         }
     }
