@@ -106,7 +106,8 @@ def main():
         ])
         qmp.call("input-send-event", events=[{"type": "btn", "data": {"down": True, "button": "left"}}])
         pointer = read_until(vm.stdout, PROMPT)  # serial trace + prompt
-        pointer += read_until(vm.stdout, PROMPT)  # echoed help + output
+        if pointer.count(PROMPT) < 2:  # both prompts can arrive in one read
+            pointer += read_until(vm.stdout, PROMPT)  # echoed help + output
         qmp.call("screendump", filename=str(PROOF / "2-help-pressed.ppm"))
         qmp.call("input-send-event", events=[{"type": "btn", "data": {"down": False, "button": "left"}}])
         time.sleep(0.3)

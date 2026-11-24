@@ -1,0 +1,59 @@
+name: Pages
+
+# Deploys the web edition only after CI is green on main: never ship red.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  WASM_BINDGEN: 0.2.130 # must equal the wasm-bindgen pin in web/Cargo.toml
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-cli-${{ env.WASM_BINDGEN }}
+      - name: Install wasm-bindgen-cli
+        run: command -v wasm-bindgen || cargo install wasm-bindgen-cli --version "=$WASM_BINDGEN" --locked
+      - name: Build web edition
+        run: |
+          cd web
+          cargo build --release
+          wasm-bindgen --target web --no-typescript --out-dir www/pkg \
+            target/wasm32-unknown-unknown/release/corvus_web.wasm
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/www
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

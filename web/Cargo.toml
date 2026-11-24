@@ -1,0 +1,21 @@
+[package]
+name = "corvus-web"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+description = "Corvus OS web edition: the kernel console and shell compiled to wasm"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Same pin as the kernel. MIT OR Apache-2.0 (THIRD_PARTY.md).
+embedded-graphics = { version = "=0.8.2", default-features = false }
+# JS glue. MIT OR Apache-2.0. Must match the wasm-bindgen-cli version in
+# .github/workflows/pages.yml exactly.
+wasm-bindgen = "=0.2.130"
+
+[profile.release]
+opt-level = "s"
+lto = true
+panic = "abort"

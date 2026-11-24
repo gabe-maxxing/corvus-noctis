@@ -6,6 +6,24 @@ starts in a Corvus serial shell with `help`, `about`, `crow`, `clear` and
 driven by a virtio tablet, mirroring the serial shell. The current board is
 QEMU virt. Dependencies: THIRD_PARTY.md. Design: docs/graphics.md.
 
+## Web edition
+
+The same console, shell and `calc` compiled to wasm, in the browser:
+https://gabe-maxxing.github.io/corvus-noctis/ (works on iPad Safari; Share ->
+Add to Home Screen for fullscreen). Build locally:
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version =0.2.130 --locked
+cd web && cargo build --release
+wasm-bindgen --target web --no-typescript --out-dir www/pkg target/wasm32-unknown-unknown/release/corvus_web.wasm
+python3 -m http.server -d www 8000
+```
+
+CI (`.github/workflows/ci.yml`) builds the kernel, runs the pointer proof and
+publishes the kernel ELF as the `nightly` release; Pages
+(`.github/workflows/pages.yml`) deploys `web/` only after CI is green.
+
 ## Boot
 
 Install Rust via rustup and QEMU (Homebrew: `brew install qemu`; Debian:
@@ -79,3 +97,7 @@ so personal artwork stays local. Safari decodes the GIF in this milestone.
 
 These are references for the initial implementation. Before importing upstream
 code, record its pinned revision and license and include required notices.
+
+## License
+
+MIT, see LICENSE. Personal Corvus artwork in `assets/` is not part of the repo.

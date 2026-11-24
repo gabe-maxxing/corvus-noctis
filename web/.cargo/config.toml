@@ -1,0 +1,3 @@
+# Overrides the kernel's aarch64 target from ../.cargo/config.toml.
+[build]
+target = "wasm32-unknown-unknown"

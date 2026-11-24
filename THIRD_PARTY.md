@@ -14,6 +14,11 @@ All dependencies are exact-pinned in `Cargo.toml` (`=x.y.z`) and locked in
 | num-traits | 0.2.19 | MIT OR Apache-2.0 | https://github.com/rust-num/num-traits | transitive |
 | autocfg | 1.5.1 | Apache-2.0 OR MIT | https://github.com/cuviper/autocfg | build-time only |
 
+Web edition (`web/`, not linked into the kernel): wasm-bindgen =0.2.130
+(MIT OR Apache-2.0, https://github.com/wasm-bindgen/wasm-bindgen) and its
+transitive crates, all MIT OR Apache-2.0. `web/www/apple-touch-icon.png` is an
+original mark generated for this repo.
+
 Bitmap font: embedded-graphics' built-in mono fonts are generated from public
 domain BDF fonts in the XOrg project (embedded-graphics `MIGRATING-0.6-0.7.md`).
 

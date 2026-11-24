@@ -30,5 +30,9 @@ Keep emulator results, Safari results, and native iPad results explicit.
 Done: ramfb console, CORVUS title, bounded logo frames, HELP button via
 virtio tablet into the same dispatcher (`tools/prove_pointer.py` PASS in QEMU
 8.2). Research notes: docs/research/ (gif-frames, holyc-evaluator, ipad-j71).
-Next: CVF RLE/delta per gif-frames.md, CrowC evaluator M1, pongoOS bootargs
-read on J71 (read-only).
+Shell: `calc <expr>` (src/calc.rs); dispatcher + line editor moved to
+src/shell.rs so the kernel and web/ share them. Web edition: web/ (wasm,
+canvas, touch HELP, iPad meta), CI + Pages workflows, MIT LICENSE.
+Next: rebase onto Codex's CVF2 main, Pages live, then the ship loop
+(button bar, fullscreen, web logo, download page, calc history). pongoOS
+bootargs on J71 stays read-only.
