@@ -1,4 +1,33 @@
-# Corvus OS
+<a href="https://gabe-maxxing.github.io/corvus-noctis/">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gabe-maxxing/gabe-maxxing/main/assets/corvus-flight-dark.gif">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/gabe-maxxing/gabe-maxxing/main/assets/corvus-flight-light.gif">
+    <img align="right" src="https://raw.githubusercontent.com/gabe-maxxing/gabe-maxxing/main/assets/corvus-flight-light.gif" width="144" alt="Corvus in flight">
+  </picture>
+</a>
+
+<h1>Corvus Noctis</h1>
+
+<p><b>An operating system you can talk to.</b> Written from scratch in Rust in the spirit of TempleOS: immediate, playful, and live all the way down. Boot it, tap it, type to it.</p>
+
+[![CI](https://github.com/gabe-maxxing/corvus-noctis/actions/workflows/ci.yml/badge.svg)](https://github.com/gabe-maxxing/corvus-noctis/actions/workflows/ci.yml)
+[![Pages](https://github.com/gabe-maxxing/corvus-noctis/actions/workflows/pages.yml/badge.svg)](https://gabe-maxxing.github.io/corvus-noctis/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-5b3f8c)](LICENSE)
+[![Rust no_std](https://img.shields.io/badge/rust-no__std%20ARM64-ffd166)](https://doc.rust-lang.org/rustc/platform-support/aarch64-unknown-none.html)
+
+**[▶ Try it in your browser](https://gabe-maxxing.github.io/corvus-noctis/)** · [Download](https://github.com/gabe-maxxing/corvus-noctis/releases/tag/nightly) · [Corvus](https://corvus.gent) · [#jointhearmy](https://x.com/gabe_maxxing)
+
+| You have | You get |
+| :--- | :--- |
+| iPhone, iPad, Android | The web edition. Share → Add to Home Screen. |
+| macOS, Windows, Linux | The real kernel in a VM (QEMU). Build steps below; one-click downloads are coming. |
+| A spare PC | Dual boot. Experimental and coming; the x86_64 port is planned. |
+
+**Why:** a computer you can shape yourself, for builders. Not a Linux distro: its own kernel, its own shell, its own crow.
+
+---
+
+## About
 
 A small, live-programming-inspired operating system in Rust. The ARM64 kernel
 starts in a Corvus serial shell with `help`, `about`, `crow`, `clear` and
