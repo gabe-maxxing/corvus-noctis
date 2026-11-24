@@ -11,6 +11,7 @@
 set -eu
 
 CORVUS_KERNEL_URL="${CORVUS_KERNEL_URL:-https://github.com/gabe-maxxing/corvus-noctis/releases/download/nightly/corvus-os-aarch64.elf}"
+CORVUS_SOURCE_URL="${CORVUS_SOURCE_URL:-https://raw.githubusercontent.com/gabe-maxxing/corvus-noctis/main}"
 SHARE="${XDG_DATA_HOME:-$HOME/.local/share}/corvus"
 BIN="$HOME/.local/bin"
 
@@ -50,6 +51,16 @@ fetch_kernel() {
   mv "$SHARE/corvus-os.elf.part" "$SHARE/corvus-os.elf"
 }
 
+fetch_bridge() {
+  for item in tools/diogenes_bridge.py diogenes/DIOGENES.md; do
+    name="${item##*/}"
+    if command -v curl >/dev/null 2>&1; then curl -fsSL "$CORVUS_SOURCE_URL/$item" -o "$SHARE/$name.part"
+    else wget -qO "$SHARE/$name.part" "$CORVUS_SOURCE_URL/$item"
+    fi
+    mv "$SHARE/$name.part" "$SHARE/$name"
+  done
+}
+
 write_launcher() {
   mkdir -p "$BIN"
   cat > "$BIN/corvus" <<'LAUNCHER'
@@ -66,7 +77,9 @@ kernel="${XDG_DATA_HOME:-$HOME/.local/share}/corvus/corvus-os.elf"
 [ -f "$kernel" ] || { echo "corvus: kernel missing, run: corvus update" >&2; exit 1; }
 if [ -n "${CORVUS_DISPLAY:-}" ]; then set -- -display "$CORVUS_DISPLAY" "$@"; fi
 echo "corvus: booting. Type in this terminal or click HELP in the window. Quit: close the window or Ctrl-C."
-exec qemu-system-aarch64 -machine virt -cpu cortex-a57 -nic none \
+command -v python3 >/dev/null 2>&1 || { echo "Diogenes needs Python 3. Install python3, then run corvus again."; exit 1; }
+exec python3 "$(dirname "$kernel")/diogenes_bridge.py" --persona "$(dirname "$kernel")/DIOGENES.md" -- \
+  qemu-system-aarch64 -machine virt -cpu cortex-a57 -nic none \
   -serial stdio -monitor none -device ramfb \
   -global virtio-mmio.force-legacy=false -device virtio-tablet-device \
   "$@" -kernel "$kernel"
@@ -78,6 +91,7 @@ main() {
   say "Corvus OS installer (runs in a VM; nothing on your disk is changed)"
   install_qemu
   fetch_kernel
+  fetch_bridge
   write_launcher
   say "installed: $BIN/corvus"
   case ":$PATH:" in

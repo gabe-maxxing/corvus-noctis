@@ -52,3 +52,8 @@ pub fn print_u32(mut value: u32) {
         send(digits[n]);
     }
 }
+
+/// Framing uses LF verbatim; unlike terminal text, do not inject CR.
+pub fn protocol(text: &str) {
+    for byte in text.bytes() { send(byte); }
+}

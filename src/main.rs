@@ -100,6 +100,8 @@ extern "C" fn kernel_main() -> ! {
     let mut next_frame = 0u64;
 
     loop {
+        let (now, frequency) = ticks();
+        shell.tick(now / (frequency / 1000).max(1));
         if let Some(byte) = uart::try_receive() {
             shell.feed(byte);
         }

@@ -81,6 +81,9 @@ def command_output(transcript):
 def main():
     subprocess.run(["cargo", "build", "--release"], cwd=ROOT, check=True)
     PROOF.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["rustc", "--edition", "2021", "--test", "tools/shell_tests.rs", "-D", "warnings", "-o", "target/shell-tests"], cwd=ROOT, check=True)
+    subprocess.run([str(ROOT / "target/shell-tests")], check=True)
+    subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tools", "-p", "test_diogenes.py"], cwd=ROOT, check=True)
     qmp_path = os.path.join(tempfile.mkdtemp(), "qmp.sock")
     vm = subprocess.Popen(
         [str(ROOT / "tools/qemu.sh"), str(KERNEL), "-qmp", f"unix:{qmp_path},server=on,wait=off"],
@@ -112,6 +115,19 @@ def main():
         qmp.call("input-send-event", events=[{"type": "btn", "data": {"down": False, "button": "left"}}])
         time.sleep(0.3)
         qmp.call("screendump", filename=str(PROOF / "3-after-release.ppm"))
+        vm.stdin.write(b"dio why\r"); vm.stdin.flush()
+        assert b"\x1eDIO why\n" in read_until(vm.stdout, b"\x1eDIO why\n")
+        vm.stdin.write(b"\x1eLive plainly.\x1f"); vm.stdin.flush()
+        assert b"Live plainly." in read_until(vm.stdout, PROMPT)
+        vm.stdin.write(b"dio\r"); vm.stdin.flush()
+        read_until(vm.stdout, b"diogenes> ")
+        vm.stdin.write(b"? virtues\r"); vm.stdin.flush()
+        read_until(vm.stdout, b"\x1eDIO virtues\n")
+        vm.stdin.write(b"\x03"); vm.stdin.flush()
+        assert b"^C" in read_until(vm.stdout, b"diogenes> ")
+        vm.stdin.write(b"\x1elate answer\x1fexit\r"); vm.stdin.flush()
+        assert b"late answer" not in read_until(vm.stdout, PROMPT)
+        print("PASS: kernel Diogenes framing, mode, cancellation and late reply isolation")
     finally:
         vm.terminate()
         vm.wait()

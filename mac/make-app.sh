@@ -15,6 +15,8 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$kernel" "$app/Contents/Resources/corvus-os.elf"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 cp "$script_dir/../docs/brand/Corvus.icns" "$app/Contents/Resources/Corvus.icns"
+cp "$script_dir/../tools/diogenes_bridge.py" "$app/Contents/Resources/diogenes_bridge.py"
+cp "$script_dir/../diogenes/DIOGENES.md" "$app/Contents/Resources/DIOGENES.md"
 
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -62,7 +64,12 @@ if ! command -v qemu-system-aarch64 >/dev/null 2>&1; then
   fi
 fi
 echo "Booting. Type here, or click HELP in the Corvus window. Quit: close the window."
-exec qemu-system-aarch64 -machine virt -cpu cortex-a57 -nic none \
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Diogenes needs Python 3: brew install python. Then open Corvus again."
+  exit 1
+fi
+exec python3 "$here/diogenes_bridge.py" --persona "$here/DIOGENES.md" -- \
+  qemu-system-aarch64 -machine virt -cpu cortex-a57 -nic none \
   -serial stdio -monitor none -device ramfb -display cocoa \
   -global virtio-mmio.force-legacy=false -device virtio-tablet-device \
   -kernel "$here/corvus-os.elf"
