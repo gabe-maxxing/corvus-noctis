@@ -13,6 +13,8 @@ work="$(mktemp -d)"
 app="$work/Corvus.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$kernel" "$app/Contents/Resources/corvus-os.elf"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+cp "$script_dir/../docs/brand/Corvus.icns" "$app/Contents/Resources/Corvus.icns"
 
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -25,6 +27,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
   <key>CFBundleVersion</key><string>0.2</string>
   <key>CFBundleShortVersionString</key><string>0.2</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>Corvus.icns</string>
   <key>CFBundleExecutable</key><string>Corvus</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
 </dict>
