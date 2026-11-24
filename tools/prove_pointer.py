@@ -128,6 +128,17 @@ def main():
         vm.stdin.write(b"\x1elate answer\x1fexit\r"); vm.stdin.flush()
         assert b"late answer" not in read_until(vm.stdout, PROMPT)
         print("PASS: kernel Diogenes framing, mode, cancellation and late reply isolation")
+        vm.stdin.write(b'i=0; while(i<5){Draw(i*20,0,15,15,14); i=i+1}; i\r'); vm.stdin.flush()
+        assert b"5\r\n" in read_until(vm.stdout, PROMPT)
+        vm.stdin.write(b"while(1){}\r"); vm.stdin.flush()
+        assert b"step limit reached" in read_until(vm.stdout, PROMPT)
+        vm.stdin.write(b'if(1){\r'); vm.stdin.flush()
+        read_until(vm.stdout, b".. ")
+        vm.stdin.write(b'\x03calc 6*7\r'); vm.stdin.flush()
+        response = read_until(vm.stdout, PROMPT)
+        if b"42\r\n" not in response: response += read_until(vm.stdout, PROMPT)
+        assert b"42\r\n" in response
+        print("PASS: kernel CrowC drawing loop, step limit, continuation cancellation and legacy recovery")
     finally:
         vm.terminate()
         vm.wait()

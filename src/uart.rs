@@ -16,7 +16,7 @@ pub fn send(byte: u8) {
 }
 
 /// Non-blocking receive so the main loop can also poll the pointer.
-pub fn try_receive() -> Option<u8> {
+fn hardware_receive() -> Option<u8> {
     unsafe {
         if UART_FLAGS.read_volatile() & RX_EMPTY != 0 {
             None
@@ -56,4 +56,25 @@ pub fn print_u32(mut value: u32) {
 /// Framing uses LF verbatim; unlike terminal text, do not inject CR.
 pub fn protocol(text: &str) {
     for byte in text.bytes() { send(byte); }
+}
+
+struct Deferred { bytes: [u8; 256], head: usize, len: usize }
+static DEFERRED: crate::Global<Deferred> = crate::Global(core::cell::UnsafeCell::new(Deferred { bytes: [0; 256], head: 0, len: 0 }));
+
+pub fn try_receive() -> Option<u8> {
+    let queue = unsafe { &mut *DEFERRED.0.get() };
+    if queue.len > 0 {
+        let b = queue.bytes[queue.head]; queue.head = (queue.head + 1) % queue.bytes.len(); queue.len -= 1; Some(b)
+    } else { hardware_receive() }
+}
+
+pub fn interrupt_requested() -> bool {
+    if let Some(b) = hardware_receive() {
+        if b == 3 { return true; }
+        let queue = unsafe { &mut *DEFERRED.0.get() };
+        if queue.len < queue.bytes.len() {
+            queue.bytes[(queue.head + queue.len) % queue.bytes.len()] = b; queue.len += 1;
+        }
+    }
+    false
 }

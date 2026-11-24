@@ -1,6 +1,8 @@
 #[path = "../src/calc.rs"] mod calc;
 #[path = "../src/shell.rs"] mod shell;
 use std::sync::Mutex;
+static DRAW: Mutex<Vec<(usize,usize,usize,usize,u32)>> = Mutex::new(Vec::new());
+fn draw(effect: shell::platform::Effect) { if let shell::platform::Effect::Draw(x,y,w,h,c) = effect { DRAW.lock().unwrap().push((x,y,w,h,c)); } }
 static OUTPUT: Mutex<String> = Mutex::new(String::new());
 fn print(text: &str) { OUTPUT.lock().unwrap().push_str(text); }
 fn take() -> String { std::mem::take(&mut *OUTPUT.lock().unwrap()) }
@@ -57,5 +59,38 @@ fn shell_contract() {
     s.run_as_typed("lantern"); assert!(take().contains("DIOGENES"));
     s.run_as_typed("banner noctis"); assert!(take().contains("noctis\n"));
     s.run_as_typed("logo"); assert!(take().contains("C O R V U S"));
+
+    s.graphics = draw;
+    s.run_as_typed("\"caw\";"); assert!(take().contains("caw\n"));
+    s.run_as_typed("Help;"); assert!(take().contains("help  about"));
+    s.run_as_typed("1+2*3"); assert!(take().contains("7\n"));
+    s.run_as_typed("let x = 9; x * 2"); assert!(take().contains("18\n"));
+    s.run_as_typed("let message = \"plain\"; message;"); assert!(take().contains("plain\n"));
+    s.run_as_typed("if (x == 9) { \"yes\"; } else { 1/0; }"); assert!(!take().contains("division by zero"));
+    s.run_as_typed("0 && (1/0); 1 || (1/0)"); assert!(!take().contains("division by zero"));
+    s.run_as_typed("i=0; while(i<5){Draw(i*20,0,15,15,14); i=i+1}");
+    assert!(!take().contains("CrowC:")); assert_eq!(DRAW.lock().unwrap().len(),5);
+    assert_eq!(DRAW.lock().unwrap()[4],(80,0,15,15,14));
+    s.run_as_typed("Draw(790,590,1000,1000)"); assert!(!take().contains("CrowC:"));
+    s.run_as_typed("while(1){}"); assert!(take().contains("step limit reached"));
+    s.run_as_typed("1/0"); assert!(take().contains("division by zero"));
+    s.run_as_typed("while(0){"); assert!(take().ends_with(".. "));
+    s.run_as_typed("1/0;"); assert!(take().ends_with(".. "));
+    s.run_as_typed("}"); assert!(!take().contains("division by zero"));
+    s.run_as_typed("if(1){"); take(); input(&mut s,b"\x03"); assert!(take().ends_with("corvus> "));
+    s.run_as_typed("Reset;"); take(); s.run_as_typed("x"); assert!(take().contains("isn't a command"));
+    for n in 0..64 { s.run_as_typed(&format!("v{n}=1")); assert!(!take().contains("CrowC:")); }
+    s.run_as_typed("overflow=1"); assert!(take().contains("64 variables"));
+    s.run_as_typed("Reset;"); take();
+    s.run_as_typed(&format!("{}1{}", "(".repeat(40), ")".repeat(40))); assert!(take().contains("nesting too deep"));
+
+    let alphabet = b"abcletifwh0129 +-*/%(){};=<>!&|\"";
+    let mut seed = 7u32;
+    for _ in 0..512 {
+        let mut probe = shell::Shell::new();
+        let mut source = String::new();
+        for _ in 0..80 { seed = seed.wrapping_mul(1664525).wrapping_add(1013904223); source.push(alphabet[seed as usize % alphabet.len()] as char); }
+        probe.run_as_typed(&source); take();
+    }
 
 }

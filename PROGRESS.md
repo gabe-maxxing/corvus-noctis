@@ -30,4 +30,11 @@
 - Sleep is an event-loop deadline, not a busy wait: pointer input and Ctrl-C stay responsive. The shared wasm shell schedules its own timer using existing wasm-bindgen, without editing web files. Repeat is capped at 32 and excludes nested/interactive/asynchronous commands to prevent runaway output and ambiguous queued prompts.
 - Large text and logo effects are a narrow rendering boundary reusable by CrowC; the language stays in shell.rs. ANSI numeric parsing saturates instead of overflowing.
 - Tests cover timer boundaries/cancellation, repeat limits, colour validation, memory wording and art commands. Kernel/web builds are warning-free; CI still gates the pointer proof and iOS-compatible web build. PR #3 merged after those checks passed.
+
+## Kernel sprint / 4. CrowC M1-M3
+
+- Added an original no-heap immediate interpreter: integer expressions/comparisons/short-circuit logic, quoted output, optional-parenthesis builtins, integer/string variables, Draw, if/else and while. Valid CrowC is tried before legacy commands; plain unknown words still receive friendly suggestions.
+- Fixed bounds: 64 variables, 24-byte names, 128-byte strings, 1024-byte continued blocks, depth 32, 4096 steps/output bytes. Draw work also consumes the step budget. Arithmetic wraps deliberately; division by zero is an error. Reset clears the session arena. No JIT or executable memory.
+- Multiline braces use `.. `; Ctrl-C clears continuation or interrupts evaluation. Serial type-ahead is deferred while polling cancellation. Shell state moved to static BSS so its arenas do not consume the 64 KiB kernel stack.
+- Tests exercise strings/variables, precedence, short circuit, skipped branches, drawing/default colour, while limits, reset/exhaustion, continuation/cancellation, deep nesting and 512 deterministic malformed inputs. Added a direct cancellation-before-execution test. Rendering clips Draw to the existing framebuffer; no web source changes.
 - CI caught a web regression before merging #4: Rust Closure callbacks introduced non-MVP reference types. Replaced them with a primitive-only timer import and an ES2017 module callback. The existing MVP and syntax checks now pass locally; no old-Safari check was weakened.

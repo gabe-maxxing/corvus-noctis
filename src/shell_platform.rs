@@ -1,12 +1,13 @@
 //! Small target-specific effects; the command language itself stays shared.
 use crate::{calc, print};
 
-pub enum Effect<'a> { Banner(&'a str), Logo }
+pub enum Effect<'a> { Banner(&'a str), Logo, Draw(usize, usize, usize, usize, u32) }
 
 pub fn render(effect: Effect<'_>) {
     #[cfg(any(target_os = "none", target_arch = "wasm32"))]
     if let Some(console) = crate::screen() {
         match effect {
+            Effect::Draw(x,y,w,h,color) => console.draw_rect(x,y,w,h,color),
             Effect::Banner(text) => console.large_banner(text),
             Effect::Logo => {
                 console.logo_requested = true;
@@ -16,7 +17,7 @@ pub fn render(effect: Effect<'_>) {
         }
     }
     #[cfg(not(any(target_os = "none", target_arch = "wasm32")))]
-    match effect { Effect::Banner(text) => { let _ = text; }, Effect::Logo => {} }
+    match effect { Effect::Banner(text) => { let _ = text; }, Effect::Logo => {}, Effect::Draw(x,y,w,h,c) => { let _ = (x,y,w,h,c); } }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -63,4 +64,12 @@ pub fn memory(shell_bytes: usize) {
     }
     #[cfg(not(target_os = "none"))]
     print("host-managed memory; kernel heap none. Free RAM is not tracked.\n");
+}
+
+/// Preserve serial type-ahead while polling Ctrl-C between interpreter steps.
+pub fn cancelled() -> bool {
+    #[cfg(target_os = "none")]
+    { crate::uart::interrupt_requested() }
+    #[cfg(not(target_os = "none"))]
+    { false }
 }
