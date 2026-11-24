@@ -16,3 +16,10 @@
 - Integrated the bridge in touch.py, interactive qemu.sh, the packaged Mac app and the Unix launcher. Windows launches Python and fetches the two bridge files beside existing ZIPs, because release packaging belongs to Claude's workflow; bundling those files later removes that first-launch fetch. No .github edits.
 - Web's shared shell compiles unchanged; Claude's JS currently intercepts `dio`, so the kernel protocol does not replace his browser model adapter. Exposed `tick(now_ms)` is available for that adapter's event loop.
 - Validation: native shell contract and four bridge tests pass; kernel/web release builds have no warnings; Mac archive includes bridge/persona and both shell scripts pass syntax checks. The existing pointer proof now also exercises serial Diogenes and host contracts in CI. Local Homebrew QEMU installation was blocked by an unwritable existing /usr/local/libexec; do not change system directory ownership just for this task. CI's QEMU proof remains mandatory before merge.
+
+## Kernel sprint / 2. Shared friendly shell
+
+- Unknown commands now suggest the nearest command by bounded edit distance, then offer Diogenes; two consecutive misses add the plain-language invitation. A successful command resets the streak. This is in shell.rs, so kernel and web use identical text/lookup.
+- Added 16-entry RAM history, arrow recall with draft restoration, and unique-prefix Tab completion (ambiguous prefixes list options). No heap or persistent transcript. Full command vocabulary stays in one table for future additions.
+- Host contracts cover typo suggestions/streak reset, recall, draft preservation, completion and history eviction. Each CI pointer proof runs these alongside kernel protocol checks; the shared web build remains mandatory.
+- PR #2 merged after kernel warnings check, prove_pointer PASS and web MVP/ES2017 build succeeded. CI still emits GitHub Action Node-version deprecation notices from Claude-owned .github; compiler warnings are zero. No workflow edits were made here.
