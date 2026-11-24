@@ -25,15 +25,28 @@ jobs:
       SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Skip stale runs (main has moved on)
+        id: fresh
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" = "$SHA" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; echo "::notice::$SHA is not main ($head); skipping"; fi
       - uses: actions/checkout@v4
+        if: steps.fresh.outputs.ok == 'true'
         with:
           ref: ${{ env.SHA }}
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.fresh.outputs.ok == 'true'
         with:
           targets: aarch64-unknown-none-softfloat
       - name: Build kernel
+        if: steps.fresh.outputs.ok == 'true'
         run: cargo build --release
       - name: Package downloads
+        if: steps.fresh.outputs.ok == 'true'
         run: |
           set -eu
           elf=target/aarch64-unknown-none-softfloat/release/corvus-os
@@ -48,6 +61,7 @@ jobs:
           cp dist/install.sh out/install.sh
           ls -la out
       - name: Publish to the nightly release
+        if: steps.fresh.outputs.ok == 'true'
         run: |
           set -eu
           notes="Built from $SHA after CI passed. Get Corvus: https://gabe-maxxing.github.io/corvus-noctis/"

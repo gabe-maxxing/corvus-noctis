@@ -24,31 +24,50 @@ jobs:
   build:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
+    outputs:
+      fresh: ${{ steps.fresh.outputs.ok }}
     steps:
+      - name: Skip stale runs (main has moved on)
+        id: fresh
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" = "$SHA" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; echo "::notice::$SHA is not main ($head); skipping"; fi
       - uses: actions/checkout@v4
+        if: steps.fresh.outputs.ok == 'true'
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.fresh.outputs.ok == 'true'
         with:
           targets: wasm32-unknown-unknown
       - uses: actions/cache@v4
+        if: steps.fresh.outputs.ok == 'true'
         with:
           path: ~/.cargo/bin/wasm-bindgen
           key: wasm-bindgen-cli-${{ env.WASM_BINDGEN }}
       - name: Install wasm-bindgen-cli
+        if: steps.fresh.outputs.ok == 'true'
         run: command -v wasm-bindgen || cargo install wasm-bindgen-cli --version "=$WASM_BINDGEN" --locked
       - name: Build site (MVP wasm + ES2017 checks for iOS 12, service worker per commit)
+        if: steps.fresh.outputs.ok == 'true'
         run: .github/scripts/build-web.sh "${SHA:0:12}"
         shell: bash
         env:
           SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/configure-pages@v5
+        if: steps.fresh.outputs.ok == 'true'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.fresh.outputs.ok == 'true'
         with:
           path: web/www
 
   deploy:
     needs: build
+    if: needs.build.outputs.fresh == 'true'
     runs-on: ubuntu-24.04
     environment:
       name: github-pages
