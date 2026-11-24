@@ -10,15 +10,16 @@ import select
 import subprocess
 from threading import Lock
 from time import monotonic
+from diogenes_bridge import Bridge
 
 ROOT = Path(__file__).resolve().parents[1]
-PROMPT = b"corvus> "
+PROMPT = (b"corvus> ", b"diogenes> ")
 ANSI = re.compile(rb"\x1b\[[0-9;]*[A-Za-z]")
 
 
-def read_prompt(stream):
+def read_prompt(stream, bridge):
     data = bytearray()
-    deadline = monotonic() + 5
+    deadline = monotonic() + 50
     while not data.endswith(PROMPT):
         ready, _, _ = select.select([stream], [], [], max(0, deadline - monotonic()))
         if not ready:
@@ -26,13 +27,14 @@ def read_prompt(stream):
         chunk = os.read(stream.fileno(), 4096)
         if not chunk:
             raise EOFError("The emulator exited.")
-        data.extend(chunk)
+        data.extend(bridge.protocol.feed(chunk))
     return ANSI.sub(b"", data).decode("ascii", errors="replace")
 
 
 def serve(vm, bind, port):
     lock = Lock()
-    banner = read_prompt(vm.stdout)
+    bridge = Bridge(vm.stdin)
+    banner = read_prompt(vm.stdout, bridge)
 
     class Handler(BaseHTTPRequestHandler):
         def reply(self, status, media_type, content):
@@ -53,6 +55,10 @@ def serve(vm, bind, port):
                 self.send_error(404)
 
         def do_POST(self):
+            if self.path == "/cancel":
+                bridge.input(b"\x03")
+                self.reply(200, "text/plain", b"Cancelled")
+                return
             if self.path != "/command":
                 self.send_error(404)
                 return
@@ -71,10 +77,9 @@ def serve(vm, bind, port):
                 return
             try:
                 with lock:
-                    vm.stdin.write(line.encode("ascii") + b"\n")
-                    vm.stdin.flush()
-                    response = read_prompt(vm.stdout)
-            except (OSError, EOFError):
+                    bridge.input(line.encode("ascii") + b"\n")
+                    response = read_prompt(vm.stdout, bridge)
+            except (OSError, EOFError, TimeoutError):
                 self.send_error(502, "The emulator is unavailable.")
                 return
             self.reply(200, "text/plain; charset=utf-8", response.encode())

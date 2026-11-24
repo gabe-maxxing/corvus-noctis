@@ -7,3 +7,12 @@
 - Gabe: upload `docs/brand/social-preview.png` under **Settings → General → Social preview**.
 - Gabe: set the repository description to “An operating system you can talk to. Rust, from scratch, TempleOS spirit.” and the website to `https://gabe-maxxing.github.io/corvus-noctis/`.
 - Gabe: set the topics to `rust`, `operating-system`, `osdev`, `templeos`, `arm64`, `bare-metal`, `wasm`, `qemu`, and `corvus`.
+
+## Kernel sprint / 1. Diogenes
+
+- Pulled main (`6d8826f`) first. Ownership stays in src/, tools/, mac/, windows/ and the explicitly requested dist/install.sh; web/www and .github are untouched.
+- Added `dio <question>`, `?question`, `dio` conversation mode and `exit`, with 45-second kernel timeout, Ctrl-C and bounded replies. Serial RS/US protocol bypasses framebuffer output. A cancelled/late framed reply never becomes shell input.
+- The standard-library bridge calls only local Ollama `/api/chat`, defaults to llama3.2:3b, reads the existing persona, strips terminal control bytes, bounds output and suppresses cancelled generations. Missing Ollama gets an in-character install line. No model downloads or third-party Python packages are required.
+- Integrated the bridge in touch.py, interactive qemu.sh, the packaged Mac app and the Unix launcher. Windows launches Python and fetches the two bridge files beside existing ZIPs, because release packaging belongs to Claude's workflow; bundling those files later removes that first-launch fetch. No .github edits.
+- Web's shared shell compiles unchanged; Claude's JS currently intercepts `dio`, so the kernel protocol does not replace his browser model adapter. Exposed `tick(now_ms)` is available for that adapter's event loop.
+- Validation: native shell contract and four bridge tests pass; kernel/web release builds have no warnings; Mac archive includes bridge/persona and both shell scripts pass syntax checks. The existing pointer proof now also exercises serial Diogenes and host contracts in CI. Local Homebrew QEMU installation was blocked by an unwritable existing /usr/local/libexec; do not change system directory ownership just for this task. CI's QEMU proof remains mandatory before merge.
