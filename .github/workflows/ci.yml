@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   kernel:
@@ -30,17 +30,12 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cd web && cargo build --release 2>&1 | tee ../web.log
           if grep -q '^warning' ../web.log; then echo "::error::web build has warnings"; exit 1; fi
+      - name: Check installers
+        run: |
+          sh -n dist/install.sh && sh -n mac/make-app.sh
+          mac/make-app.sh target/aarch64-unknown-none-softfloat/release/corvus-os /tmp/dist
+          unzip -l /tmp/dist/Corvus-mac.zip
       - uses: actions/upload-artifact@v4
         with:
           name: corvus-os-kernel
           path: target/aarch64-unknown-none-softfloat/release/corvus-os
-      - name: Publish nightly kernel
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cp target/aarch64-unknown-none-softfloat/release/corvus-os corvus-os-aarch64.elf
-          gh release delete nightly --yes --cleanup-tag || true
-          gh release create nightly corvus-os-aarch64.elf README.md LICENSE \
-            --prerelease --target "$GITHUB_SHA" --title "Corvus OS nightly" \
-            --notes "Kernel ELF from $GITHUB_SHA. Run: qemu-system-aarch64 -machine virt -cpu cortex-a57 -device ramfb -nographic -kernel corvus-os-aarch64.elf"

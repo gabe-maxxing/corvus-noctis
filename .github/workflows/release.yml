@@ -1,0 +1,59 @@
+name: Release
+
+# After CI is green on main: build the kernel and every download, and attach
+# them to the rolling "nightly" release. Download links never change:
+#   https://github.com/gabe-maxxing/corvus-noctis/releases/download/nightly/<file>
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  nightly:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-none-softfloat
+      - name: Build kernel
+        run: cargo build --release
+      - name: Package downloads
+        run: |
+          set -eu
+          elf=target/aarch64-unknown-none-softfloat/release/corvus-os
+          mkdir -p out
+          cp "$elf" out/corvus-os-aarch64.elf
+          mac/make-app.sh "$elf" out
+          mkdir -p win/Corvus
+          cp windows/Corvus.bat win/Corvus/Corvus.bat
+          cp "$elf" win/Corvus/corvus-os.elf
+          printf 'Corvus OS for Windows\r\nDouble-click Corvus.bat. If QEMU is missing it offers to install it with winget.\r\nCorvus runs in a virtual machine window. Nothing on your PC is changed.\r\n' > win/Corvus/README.txt
+          (cd win && zip -qr ../out/Corvus-windows.zip Corvus)
+          cp dist/install.sh out/install.sh
+          ls -la out
+      - name: Publish to the nightly release
+        run: |
+          set -eu
+          notes="Built from $SHA after CI passed. Get Corvus: https://gabe-maxxing.github.io/corvus-noctis/"
+          if ! gh release view nightly >/dev/null 2>&1; then
+            gh release create nightly --prerelease --target "$SHA" --title "Corvus OS nightly" --notes "$notes"
+          fi
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$SHA" -F force=true
+          gh release upload nightly out/* --clobber
+          gh release edit nightly --notes "$notes"

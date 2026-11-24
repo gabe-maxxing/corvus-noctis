@@ -3,108 +3,150 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0c0a10">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Corvus">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#000000">
+<title>Corvus OS: get it</title>
 <link rel="icon" type="image/png" href="apple-touch-icon.png">
-<title>Corvus OS</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; background: #0c0a10; color: #e8e4f0; font: 16px/1.4 ui-monospace, Menlo, monospace; }
-  body { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 10px;
-         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; }
-  canvas { width: min(100vw, calc((100dvh - 90px) * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated;
-           touch-action: none; display: block; }
-  form { display: flex; gap: 8px; width: min(100vw - 20px, 800px); }
-  input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 6px;
-          border: 2px solid #5b3f8c; background: #15111d; color: #ffd166; outline: none; }
-  input:focus { border-color: #ffd166; }
-  button { font: inherit; font-size: 18px; padding: 10px 18px; border-radius: 6px; border: 2px solid #ffd166;
-           background: #5b3f8c; color: #ffd166; }
-  footer { color: #8a80a0; font-size: 13px; padding-bottom: 8px; }
-  footer a { color: #8a80a0; }
-  #status { color: #8a80a0; }
+  /* 16 colours, like it should be. */
+  :root {
+    --c0:#000000; --c1:#0000aa; --c2:#00aa00; --c3:#00aaaa; --c4:#aa0000; --c5:#aa00aa; --c6:#aa5500; --c7:#aaaaaa;
+    --c8:#555555; --c9:#5555ff; --c10:#55ff55; --c11:#55ffff; --c12:#ff5555; --c13:#ff55ff; --c14:#ffff55; --c15:#ffffff;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--c0); color: var(--c15); font: 18px/1.45 ui-monospace, Menlo, Consolas, monospace; }
+  body { padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  main { max-width: 760px; margin: 0 auto; }
+  .bar { background: var(--c1); color: var(--c14); padding: 2px 8px; display: flex; justify-content: space-between; }
+  .bar b { color: var(--c15); }
+  pre.crow { color: var(--c13); margin: 18px 0 4px; font-size: 20px; line-height: 1.15; }
+  h1 { font-size: clamp(40px, 11vw, 84px); margin: 0; letter-spacing: 0.18em; line-height: 1; }
+  h1 span { transition: color 0.2s; }
+  .tag { color: var(--c7); margin: 6px 0 22px; }
+  .tag .cur { background: var(--c14); color: var(--c0); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { background: transparent; color: var(--c14); } }
+  a.big { display: block; text-align: center; text-decoration: none; font-size: clamp(22px, 5vw, 30px); font-weight: bold;
+          padding: 22px 16px; margin: 0 0 8px; color: var(--c0); background: var(--c14); border: 4px solid var(--c15);
+          box-shadow: 8px 8px 0 var(--c5); }
+  a.big:active { transform: translate(6px, 6px); box-shadow: 2px 2px 0 var(--c5); }
+  .sub { color: var(--c11); margin: 6px 0 24px; text-align: center; }
+  .box { border: 2px solid var(--c9); padding: 12px 14px; margin: 18px 0; }
+  .box h2 { margin: -25px 0 8px -6px; font-size: 18px; display: table; background: var(--c0); padding: 0 6px; color: var(--c9); }
+  .ok h2 { color: var(--c10); } .ok { border-color: var(--c2); }
+  .soon h2 { color: var(--c6); } .soon { border-color: var(--c6); border-style: dashed; }
+  code { color: var(--c10); word-break: break-all; }
+  .copy { font: inherit; background: var(--c2); color: var(--c15); border: 0; padding: 2px 10px; margin-left: 6px; cursor: pointer; }
+  ol { padding-left: 22px; margin: 6px 0; } li { margin: 4px 0; }
+  nav { margin-top: 28px; color: var(--c8); }
+  nav a { color: var(--c7); margin-right: 14px; }
+  nav a.on { color: var(--c14); }
+  .muted { color: var(--c8); font-size: 15px; }
 </style>
 </head>
 <body>
-<canvas id="screen" width="800" height="600" aria-label="Corvus OS console"></canvas>
-<form id="line" autocomplete="off">
-  <input id="input" placeholder="type a command, e.g. calc (2 + 3) * 4" autocapitalize="off" autocorrect="off"
-         spellcheck="false" enterkeyhint="send" aria-label="Corvus shell input">
-  <button type="submit">Enter</button>
-</form>
-<footer><span id="status">booting…</span> · Corvus OS web edition · <a href="https://github.com/gabe-maxxing/corvus-noctis">source (MIT)</a></footer>
-<script type="module">
-import init, * as corvus from "./pkg/corvus_web.js";
+<main>
+  <div class="bar"><span><b>CORVUS</b> / get it</span><span id="clock">--:--:--</span></div>
+  <pre class="crow" id="crow" aria-hidden="true">   .__
+   (o )>
+   / )
+  /_/</pre>
+  <h1 id="title" aria-label="CORVUS"></h1>
+  <p class="tag">an original TempleOS-spirited OS for ARM64. runs right here. <span class="cur">&nbsp;</span></p>
 
-const canvas = document.getElementById("screen");
-const ctx = canvas.getContext("2d");
-const input = document.getElementById("input");
-const form = document.getElementById("line");
-const status = document.getElementById("status");
+  <a class="big" id="primary" href="app/">Open Corvus</a>
+  <p class="sub" id="primary-sub">detecting your device...</p>
 
-const wasm = await init();
-const W = corvus.width(), H = corvus.height();
-corvus.boot();
+  <div id="details"></div>
 
-function draw() {
-  const bytes = new Uint8ClampedArray(wasm.memory.buffer, corvus.pixels(), W * H * 4);
-  ctx.putImageData(new ImageData(bytes, W, H), 0, 0);
+  <nav id="others" aria-label="Other platforms">other devices:
+    <a href="#ios" data-os="ios">iPad/iPhone</a>
+    <a href="#android" data-os="android">Android</a>
+    <a href="#mac" data-os="mac">macOS</a>
+    <a href="#windows" data-os="windows">Windows</a>
+    <a href="#linux" data-os="linux">Linux/Unix</a>
+    <a href="app/">web app</a>
+  </nav>
+  <p class="muted">MIT licensed. <a href="https://github.com/gabe-maxxing/corvus-noctis" style="color:inherit">source</a> · builds come from the <a href="https://github.com/gabe-maxxing/corvus-noctis/releases/tag/nightly" style="color:inherit">nightly release</a> of main, only when CI is green.</p>
+</main>
+<script>
+const REL = "https://github.com/gabe-maxxing/corvus-noctis/releases/download/nightly/";
+const INSTALL = new URL("install.sh", location.href).href;
+
+const vm = (steps) => `<div class="box ok"><h2>Run in VM (recommended)</h2>
+  <ol>${steps.map((s) => `<li>${s}</li>`).join("")}</ol>
+  Corvus boots inside QEMU, a free virtual machine, in its own window. Your disk and your OS are not touched.</div>`;
+const dual = `<div class="box soon"><h2>Dual boot (experimental, coming)</h2>
+  Not yet, honestly. Corvus only knows QEMU's virtual hardware today: no drivers for real disks,
+  GPUs or keyboards. A dual-boot build would boot to a black screen. When it exists, it lands here.</div>`;
+const home = (how) => `<div class="box ok"><h2>Add to Home Screen</h2>
+  <ol>${how.map((s) => `<li>${s}</li>`).join("")}</ol>
+  Then Corvus opens fullscreen like an app, with its own icon.</div>`;
+
+const OS = {
+  ios: { label: "Open web app", href: "app/", sub: "runs in Safari, no install",
+    html: home(["Open the web app.", "Tap the Share button (square with an arrow).", "Tap <b>Add to Home Screen</b>, then <b>Add</b>."]) },
+  android: { label: "Open web app", href: "app/", sub: "runs in Chrome, no install",
+    html: home(["Open the web app.", "Tap the <b>⋮</b> menu in Chrome.", "Tap <b>Add to Home screen</b> (or <b>Install app</b>)."]) },
+  mac: { label: "Download Corvus-mac.zip", href: REL + "Corvus-mac.zip", sub: "macOS 11+, Apple silicon or Intel",
+    html: vm(["Unzip and drag <b>Corvus.app</b> to Applications.", "First launch: right-click &gt; <b>Open</b> (not signed yet).",
+      "No QEMU yet? Corvus offers <code>brew install qemu</code>."]) + dual },
+  windows: { label: "Download Corvus-windows.zip", href: REL + "Corvus-windows.zip", sub: "Windows 10/11, 64-bit",
+    html: vm(["Unzip anywhere.", "Double-click <b>Corvus.bat</b>.",
+      "No QEMU yet? It offers <code>winget install SoftwareFreedomConservancy.QEMU</code>."]) + dual },
+  linux: { label: "Copy the install command", href: "#", sub: "Linux and other Unix: QEMU from your package manager",
+    html: vm([`Run: <code>curl -fsSL ${INSTALL} | sh</code><button class="copy" data-copy="curl -fsSL ${INSTALL} | sh">copy</button>`,
+      "Then: <code>corvus</code> (update later with <code>corvus update</code>).",
+      "Uninstall: <code>rm -rf ~/.local/share/corvus ~/.local/bin/corvus</code>"]) + dual },
+};
+
+function detect() {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+  if (/Android/.test(ua)) return "android";
+  if (/Macintosh|Mac OS X/.test(ua)) return "mac";
+  if (/Windows/.test(ua)) return "windows";
+  if (/Linux|X11|BSD|SunOS/.test(ua)) return "linux";
+  return "ios"; // unknown: the web app works everywhere
 }
 
-// Same bytes a serial terminal would send: printable ASCII, CR, backspace.
-function type(text) {
-  for (const ch of text) {
-    const code = ch.charCodeAt(0);
-    if (code >= 32 && code < 127) corvus.key(code);
-  }
+function show(os) {
+  const o = OS[os];
+  const a = document.getElementById("primary");
+  a.textContent = o.label;
+  a.href = o.href;
+  a.onclick = os === "linux" ? (e) => { e.preventDefault(); copy(`curl -fsSL ${INSTALL} | sh`, a, o.label); } : null;
+  document.getElementById("primary-sub").textContent = o.sub;
+  document.getElementById("details").innerHTML = o.html;
+  for (const l of document.querySelectorAll("#others a[data-os]")) l.classList.toggle("on", l.dataset.os === os);
 }
 
-input.addEventListener("input", () => {
-  type(input.value);
-  input.value = "";
-  draw();
+function copy(text, el, label) {
+  navigator.clipboard?.writeText(text).then(() => { el.textContent = "copied!"; setTimeout(() => (el.textContent = label), 1200); },
+    () => prompt("copy this:", text));
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button.copy");
+  if (b) copy(b.dataset.copy, b, "copy");
+  const n = e.target.closest("#others a[data-os]");
+  if (n) { e.preventDefault(); show(n.dataset.os); history.replaceState(null, "", "#" + n.dataset.os); }
 });
-input.addEventListener("keydown", (event) => {
-  if (event.key === "Backspace") { corvus.key(8); draw(); event.preventDefault(); }
-});
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  type(input.value);
-  input.value = "";
-  corvus.key(13);
-  draw();
-});
 
-function toFramebuffer(event) {
-  const r = canvas.getBoundingClientRect();
-  return [Math.floor((event.clientX - r.left) * W / r.width), Math.floor((event.clientY - r.top) * H / r.height)];
-}
-canvas.addEventListener("pointerdown", (event) => {
-  const [x, y] = toFramebuffer(event);
-  corvus.pointer(x, y, true);
-  draw();
-  if (!(x >= 572 && x < 784 && y >= 16 && y < 136)) input.focus();
-});
-for (const name of ["pointerup", "pointercancel", "pointerleave"]) {
-  canvas.addEventListener(name, (event) => {
-    const [x, y] = toFramebuffer(event);
-    corvus.pointer(x, y, false);
-    draw();
-  });
-}
+show(OS[location.hash.slice(1)] ? location.hash.slice(1) : detect());
 
-function frame(now) {
-  if (corvus.tick(now)) draw();
-  requestAnimationFrame(frame);
-}
-draw();
-requestAnimationFrame(frame);
-status.textContent = "running";
-if (matchMedia("(pointer: fine)").matches) input.focus();
+// Everything live: the title cycles through the 16 colours, the clock ticks, the crow blinks.
+const title = document.getElementById("title");
+title.innerHTML = [..."CORVUS"].map((c) => `<span>${c}</span>`).join("");
+const spans = title.querySelectorAll("span");
+let t = 0;
+setInterval(() => {
+  t++;
+  spans.forEach((s, i) => (s.style.color = `var(--c${9 + ((i + t) % 7)})`));
+  document.getElementById("clock").textContent = new Date().toTimeString().slice(0, 8);
+  document.getElementById("crow").textContent = t % 12 === 0
+    ? "   .__\n   (- )>\n   / )\n  /_/" : "   .__\n   (o )>\n   / )\n  /_/";
+}, 250);
 </script>
 </body>
 </html>

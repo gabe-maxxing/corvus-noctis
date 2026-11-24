@@ -41,8 +41,10 @@ jobs:
         run: |
           cd web
           cargo build --release
-          wasm-bindgen --target web --no-typescript --out-dir www/pkg \
+          wasm-bindgen --target web --no-typescript --out-dir www/app/pkg \
             target/wasm32-unknown-unknown/release/corvus_web.wasm
+      - name: Serve the Unix installer
+        run: cp dist/install.sh web/www/install.sh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

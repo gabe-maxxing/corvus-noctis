@@ -8,20 +8,25 @@ QEMU virt. Dependencies: THIRD_PARTY.md. Design: docs/graphics.md.
 
 ## Web edition
 
-The same console, shell and `calc` compiled to wasm, in the browser:
-https://gabe-maxxing.github.io/corvus-noctis/ (works on iPad Safari; Share ->
-Add to Home Screen for fullscreen). Build locally:
+Get Corvus: https://gabe-maxxing.github.io/corvus-noctis/ picks the right
+download for your device (web app on iPad/Android, Corvus-mac.zip,
+Corvus-windows.zip, or `curl -fsSL .../install.sh | sh` on Linux/Unix). All
+desktop builds run Corvus in a QEMU VM; downloads come from the `nightly`
+release, rebuilt by `.github/workflows/release.yml` after every green CI run.
+
+The web app (`/app/`) is the same console, shell and `calc` compiled to wasm
+(iPad Safari: Share -> Add to Home Screen for fullscreen). Build locally:
 
 ```sh
 rustup target add wasm32-unknown-unknown
 cargo install wasm-bindgen-cli --version =0.2.130 --locked
 cd web && cargo build --release
-wasm-bindgen --target web --no-typescript --out-dir www/pkg target/wasm32-unknown-unknown/release/corvus_web.wasm
+wasm-bindgen --target web --no-typescript --out-dir www/app/pkg target/wasm32-unknown-unknown/release/corvus_web.wasm
 python3 -m http.server -d www 8000
 ```
 
 CI (`.github/workflows/ci.yml`) builds the kernel, runs the pointer proof and
-publishes the kernel ELF as the `nightly` release; Pages
+checks the installers; Pages
 (`.github/workflows/pages.yml`) deploys `web/` only after CI is green.
 
 ## Boot

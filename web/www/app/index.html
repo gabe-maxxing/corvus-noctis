@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0a10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Corvus">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="icon" type="image/png" href="../apple-touch-icon.png">
+<title>Corvus OS</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #0c0a10; color: #e8e4f0; font: 16px/1.4 ui-monospace, Menlo, monospace; }
+  body { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 10px;
+         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; }
+  canvas { width: min(100vw, calc((100dvh - 90px) * 4 / 3)); aspect-ratio: 4 / 3; image-rendering: pixelated;
+           touch-action: none; display: block; }
+  form { display: flex; gap: 8px; width: min(100vw - 20px, 800px); }
+  input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 6px;
+          border: 2px solid #5b3f8c; background: #15111d; color: #ffd166; outline: none; }
+  input:focus { border-color: #ffd166; }
+  button { font: inherit; font-size: 18px; padding: 10px 18px; border-radius: 6px; border: 2px solid #ffd166;
+           background: #5b3f8c; color: #ffd166; }
+  footer { color: #8a80a0; font-size: 13px; padding-bottom: 8px; }
+  footer a { color: #8a80a0; }
+  #status { color: #8a80a0; }
+</style>
+</head>
+<body>
+<canvas id="screen" width="800" height="600" aria-label="Corvus OS console"></canvas>
+<form id="line" autocomplete="off">
+  <input id="input" placeholder="type a command, e.g. calc (2 + 3) * 4" autocapitalize="off" autocorrect="off"
+         spellcheck="false" enterkeyhint="send" aria-label="Corvus shell input">
+  <button type="submit">Enter</button>
+</form>
+<footer><span id="status">booting…</span> · Corvus OS web edition · <a href="../">get Corvus</a> · <a href="https://github.com/gabe-maxxing/corvus-noctis">source (MIT)</a></footer>
+<script type="module">
+import init, * as corvus from "./pkg/corvus_web.js";
+
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+const input = document.getElementById("input");
+const form = document.getElementById("line");
+const status = document.getElementById("status");
+
+const wasm = await init();
+const W = corvus.width(), H = corvus.height();
+corvus.boot();
+
+function draw() {
+  const bytes = new Uint8ClampedArray(wasm.memory.buffer, corvus.pixels(), W * H * 4);
+  ctx.putImageData(new ImageData(bytes, W, H), 0, 0);
+}
+
+// Same bytes a serial terminal would send: printable ASCII, CR, backspace.
+function type(text) {
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if (code >= 32 && code < 127) corvus.key(code);
+  }
+}
+
+input.addEventListener("input", () => {
+  type(input.value);
+  input.value = "";
+  draw();
+});
+input.addEventListener("keydown", (event) => {
+  if (event.key === "Backspace") { corvus.key(8); draw(); event.preventDefault(); }
+});
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  type(input.value);
+  input.value = "";
+  corvus.key(13);
+  draw();
+});
+
+function toFramebuffer(event) {
+  const r = canvas.getBoundingClientRect();
+  return [Math.floor((event.clientX - r.left) * W / r.width), Math.floor((event.clientY - r.top) * H / r.height)];
+}
+canvas.addEventListener("pointerdown", (event) => {
+  const [x, y] = toFramebuffer(event);
+  corvus.pointer(x, y, true);
+  draw();
+  if (!(x >= 572 && x < 784 && y >= 16 && y < 136)) input.focus();
+});
+for (const name of ["pointerup", "pointercancel", "pointerleave"]) {
+  canvas.addEventListener(name, (event) => {
+    const [x, y] = toFramebuffer(event);
+    corvus.pointer(x, y, false);
+    draw();
+  });
+}
+
+function frame(now) {
+  if (corvus.tick(now)) draw();
+  requestAnimationFrame(frame);
+}
+draw();
+requestAnimationFrame(frame);
+status.textContent = "running";
+if (matchMedia("(pointer: fine)").matches) input.focus();
+</script>
+</body>
+</html>
