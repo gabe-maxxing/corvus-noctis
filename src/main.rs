@@ -39,6 +39,8 @@ global_asm!(
 struct Global<T>(UnsafeCell<T>);
 unsafe impl<T> Sync for Global<T> {}
 
+static SHELL: Global<Shell> = Global(UnsafeCell::new(Shell::new()));
+
 static CONSOLE: Global<Option<Console>> = Global(UnsafeCell::new(None));
 
 fn screen() -> Option<&'static mut Console> {
@@ -93,7 +95,7 @@ extern "C" fn kernel_main() -> ! {
     }
     print("corvus> ");
 
-    let mut shell = Shell::new();
+    let shell = unsafe { &mut *SHELL.0.get() };
     let (mut x, mut y) = (0u32, 0u32);
     let mut pressed = false;
     let mut frame = 0usize;

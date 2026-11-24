@@ -5,6 +5,8 @@
 use crate::{calc, print};
 #[path = "shell_platform.rs"]
 pub mod platform;
+#[path = "crowc.rs"]
+mod crowc;
 
 const COMMANDS: &[&str] = &["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit", "time", "uptime", "mem", "color", "banner", "repeat", "sleep", "logo", "lantern"];
 const HISTORY: usize = 16;
@@ -82,7 +84,7 @@ fn calculate(expression: &str) {
 }
 
 pub struct Shell {
-    line: [u8; 128],
+    line: [u8; 256],
     length: usize,
     previous_was_cr: bool,
     llm_mode: bool,
@@ -94,28 +96,31 @@ pub struct Shell {
     deadline: u64,
     pub dio_online: bool,
     unknown: u8,
-    history: [[u8; 128]; HISTORY],
+    history: [[u8; 256]; HISTORY],
     history_lens: [usize; HISTORY],
     history_count: usize,
     history_cursor: usize,
-    draft: [u8; 128],
+    draft: [u8; 256],
     draft_len: usize,
     escape: u8,
     sleeping: Option<u64>,
+    evaluator: crowc::CrowC,
+    source: [u8; 1024],
+    source_len: usize,
     pub graphics: for<'a> fn(platform::Effect<'a>),
 }
 
 impl Shell {
     pub const fn new() -> Shell {
-        Shell { line: [0; 128], length: 0, previous_was_cr: false,
+        Shell { line: [0; 256], length: 0, previous_was_cr: false,
             llm_mode: false, waiting: false, receiving: false, reply: [0; 2048],
             reply_len: 0, now_ms: 0, deadline: 0, dio_online: false, unknown: 0,
-            history: [[0; 128]; HISTORY], history_lens: [0; HISTORY], history_count: 0,
-            history_cursor: 0, draft: [0; 128], draft_len: 0, escape: 0, sleeping: None, graphics: platform::render }
+            history: [[0; 256]; HISTORY], history_lens: [0; HISTORY], history_count: 0,
+            history_cursor: 0, draft: [0; 256], draft_len: 0, escape: 0, sleeping: None, evaluator: crowc::CrowC::new(), source: [0; 1024], source_len: 0, graphics: platform::render }
     }
 
     fn prompt(&self) {
-        print(if self.llm_mode { "diogenes> " } else { "corvus> " });
+        print(if self.source_len > 0 { ".. " } else if self.llm_mode { "diogenes> " } else { "corvus> " });
     }
 
     /// Called from the event loop; never block pointer input on a host model.
@@ -182,7 +187,7 @@ impl Shell {
     }
 
     fn complete(&mut self) {
-        if self.llm_mode || self.line[..self.length].contains(&b' ') { return; }
+        if self.llm_mode || self.source_len > 0 || self.line[..self.length].contains(&b' ') { return; }
         let prefix = core::str::from_utf8(&self.line[..self.length]).unwrap_or("");
         let mut found = ""; let mut count = 0;
         for &candidate in COMMANDS {
@@ -198,6 +203,23 @@ impl Shell {
     }
 
     fn dispatch(&mut self, text: &str) {
+        if self.source_len > 0 || self.evaluator.accepts(text) {
+            if self.source_len + text.len() + 1 > self.source.len() {
+                self.source_len = 0; print("CrowC: block exceeds 1024 bytes\n"); return;
+            }
+            self.source[self.source_len..self.source_len + text.len()].copy_from_slice(text.as_bytes());
+            self.source_len += text.len(); self.source[self.source_len] = b'\n'; self.source_len += 1;
+            let copy = self.source;
+            let source = core::str::from_utf8(&copy[..self.source_len]).unwrap_or("");
+            if crowc::incomplete(source) { return; }
+            self.source_len = 0;
+            let context = crowc::Context { graphics: self.graphics, command, ticks: platform::clock(self.now_ms), cancelled: platform::cancelled };
+            match self.evaluator.eval(source, context) {
+                Ok(()) => { print("\n"); self.unknown = 0; }
+                Err(error) => { print("\nCrowC: "); print(error.0); print("\n"); }
+            }
+            return;
+        }
         let (name, args) = text.split_once(' ').unwrap_or((text, ""));
         let args = args.trim();
         match name {
@@ -269,7 +291,8 @@ impl Shell {
         copy[..self.length].copy_from_slice(&self.line[..self.length]);
         if let Ok(text) = core::str::from_utf8(&copy[..self.length]) {
             let text = text.trim();
-            if text == "exit" && self.llm_mode {
+            if self.source_len > 0 { self.dispatch(text);
+            } else if text == "exit" && self.llm_mode {
                 self.llm_mode = false; self.unknown = 0;
             } else if text == "dio" {
                 self.ask("");
@@ -289,6 +312,7 @@ impl Shell {
         if byte == 3 {
             self.waiting = false;
             self.sleeping = None;
+            self.source_len = 0;
             self.length = 0;
             self.previous_was_cr = false;
             self.escape = 0;

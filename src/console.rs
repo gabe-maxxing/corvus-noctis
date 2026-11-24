@@ -86,6 +86,11 @@ impl Console {
         self.redraw_cursor(true);
     }
 
+    pub fn draw_rect(&mut self, x: usize, y: usize, w: usize, h: usize, color: u32) {
+        let color = if color < 16 { PALETTE[color as usize] } else { color };
+        self.fb.fill(x, y, w, h, color);
+    }
+
     pub fn large_banner(&mut self, text: &str) {
         if self.row + 3 >= ROWS { self.newline(); self.newline(); self.newline(); }
         self.big_text(text, TERM_X, TERM_Y + self.row * GLYPH_H, 2, self.color);
