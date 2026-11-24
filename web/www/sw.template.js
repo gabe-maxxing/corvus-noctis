@@ -17,6 +17,8 @@ var CORE = [
   "icons/apple-touch-icon-167x167.png",
   "icons/apple-touch-icon-180x180.png",
   "landing.js",
+  "guide/console.png",
+  "guide/splash.png",
   "app/",
   "app/index.html",
   "app/app.js",

@@ -16,6 +16,12 @@
 <meta property="og:image:alt" content="Corvus Noctis: a crow holding a lantern">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://gabe-maxxing.github.io/corvus-noctis/social-preview.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="apple-touch-icon" sizes="57x57" href="icons/apple-touch-icon-57x57.png">
 <link rel="apple-touch-icon" sizes="60x60" href="icons/apple-touch-icon-60x60.png">
 <link rel="apple-touch-icon" sizes="72x72" href="icons/apple-touch-icon-72x72.png">
@@ -26,75 +32,125 @@
 <link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152x152.png">
 <link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167x167.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180x180.png">
-<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <title>Corvus Noctis: get it</title>
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
 <style>
-  /* 16 colours, like it should be. */
-  :root {
-    /* 16 colours, Corvus edition: ink, night purple, lantern gold. */
-    --c0:#0c0a10; --c1:#2a1f45; --c2:#3fa37a; --c3:#3fb7c4; --c4:#c2413b; --c5:#5b3f8c; --c6:#b8792b; --c7:#b9b2c8;
-    --c8:#5c5470; --c9:#8c6fd1; --c10:#7fe0a8; --c11:#8fe8f0; --c12:#ff7a70; --c13:#c9a7ff; --c14:#ffd166; --c15:#f2eefa;
-    color-scheme: dark;
-  }
+  /* 16 colours, Corvus edition: ink, night purple, lantern gold. */
+  :root { color-scheme: dark; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--c0); color: var(--c15); font: 18px/1.45 ui-monospace, Menlo, Consolas, monospace; }
-  body { padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  html, body { margin: 0; background: #0c0a10; color: #f2eefa; font: 18px/1.45 Menlo, ui-monospace, Consolas, monospace; }
+  body { padding: 16px; padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
   main { max-width: 760px; margin: 0 auto; }
-  .bar { background: var(--c5); color: var(--c14); padding: 2px 8px; display: flex; justify-content: space-between; }
-  .bar b { color: var(--c15); }
-  pre.crow { color: var(--c13); margin: 18px 0 4px; font-size: 20px; line-height: 1.15; }
-  h1 { font-size: 56px; font-size: clamp(40px, 11vw, 84px); margin: 0; letter-spacing: 0.18em; line-height: 1; }
-  h1 span { transition: color 0.2s; }
-  .tag { color: var(--c7); margin: 6px 0 22px; }
-  .tag .cur { background: var(--c14); color: var(--c0); animation: blink 1s steps(1) infinite; }
-  @keyframes blink { 50% { background: transparent; color: var(--c14); } }
-  a.big { display: block; text-align: center; text-decoration: none; font-size: 26px; font-size: clamp(22px, 5vw, 30px); font-weight: bold;
-          padding: 22px 16px; margin: 0 0 8px; color: var(--c0); background: var(--c14); border: 4px solid var(--c15);
-          box-shadow: 8px 8px 0 var(--c5); }
-  a.big:active { transform: translate(6px, 6px); box-shadow: 2px 2px 0 var(--c5); }
-  .sub { color: var(--c11); margin: 6px 0 24px; text-align: center; }
-  .box { border: 2px solid var(--c9); padding: 12px 14px; margin: 18px 0; }
-  .box h2 { margin: -25px 0 8px -6px; font-size: 18px; display: table; background: var(--c0); padding: 0 6px; color: var(--c9); }
-  .ok h2 { color: var(--c10); } .ok { border-color: var(--c2); }
-  .soon h2 { color: var(--c6); } .soon { border-color: var(--c6); border-style: dashed; }
-  code { color: var(--c10); word-break: break-all; }
-  .copy { font: inherit; background: var(--c2); color: var(--c15); border: 0; padding: 2px 10px; margin-left: 6px; cursor: pointer; }
-  ol { padding-left: 22px; margin: 6px 0; } li { margin: 4px 0; }
-  nav { margin-top: 28px; color: var(--c8); }
-  nav a { color: var(--c7); margin-right: 14px; }
-  nav a.on { color: var(--c14); }
-  .muted { color: var(--c8); font-size: 15px; }
+  a { color: #ffd166; }
+  .topbar { background: #5b3f8c; color: #ffd166; padding: 2px 8px; display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; }
+  .topbar b { color: #f2eefa; letter-spacing: 0.12em; }
+  .hero { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; margin: 18px 0 8px; }
+  .hero img { width: 96px; height: 96px; margin-right: 16px; }
+  h1 { font-size: 44px; margin: 0; letter-spacing: 0.16em; line-height: 1; }
+  h1 span { -webkit-transition: color 0.2s; transition: color 0.2s; }
+  .tag { color: #b9b2c8; margin: 6px 0 0; }
+
+  /* The crow guide */
+  .crow { display: -webkit-flex; display: flex; -webkit-align-items: flex-start; align-items: flex-start; margin: 18px 0; }
+  .crow img { width: 56px; height: 56px; -webkit-flex: none; flex: none; margin-right: 12px; }
+  .bubble { position: relative; background: #2a1f45; border: 2px solid #8c6fd1; padding: 10px 14px; color: #f2eefa; min-height: 56px; }
+  .bubble:before { content: ""; position: absolute; left: -10px; top: 18px; border: 8px solid transparent; border-right-color: #8c6fd1; border-left: 0; }
+
+  /* Progress */
+  .progress { height: 12px; border: 2px solid #5b3f8c; margin: 6px 0 4px; }
+  .progress i { display: block; height: 100%; background: #ffd166; -webkit-transition: width 0.3s; transition: width 0.3s; }
+  .steplabel { color: #8c6fd1; font-size: 15px; }
+
+  /* Questions */
+  h2 { font-size: 24px; margin: 18px 0 12px; color: #ffd166; }
+  .choices { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: 0 -6px; }
+  .choice { -webkit-flex: 1 1 200px; flex: 1 1 200px; margin: 6px; min-height: 84px; text-align: left; font: inherit; font-size: 20px;
+            color: #f2eefa; background: #15111d; border: 3px solid #5b3f8c; padding: 14px 16px; cursor: pointer; -webkit-appearance: none; border-radius: 0; }
+  .choice small { display: block; color: #b9b2c8; font-size: 14px; margin-top: 4px; }
+  .choice:hover, .choice:focus { border-color: #ffd166; outline: none; }
+  .choice.detected { border-color: #ffd166; box-shadow: 6px 6px 0 #5b3f8c; }
+  .choice .emoji { font-size: 26px; margin-right: 6px; }
+  .row { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; -webkit-align-items: center; align-items: center; margin-top: 14px; }
+  .link { background: none; border: 0; color: #b9b2c8; font: inherit; text-decoration: underline; cursor: pointer; padding: 6px 0; }
+
+  /* Result + guide */
+  a.big { display: block; text-align: center; text-decoration: none; font-size: 26px; font-weight: bold; padding: 22px 16px; margin: 8px 0;
+          color: #0c0a10; background: #ffd166; border: 4px solid #f2eefa; box-shadow: 8px 8px 0 #5b3f8c; }
+  a.big:active { -webkit-transform: translate(6px, 6px); transform: translate(6px, 6px); box-shadow: 2px 2px 0 #5b3f8c; }
+  .sub { color: #8fe8f0; margin: 6px 0 18px; text-align: center; }
+  .step { border: 2px solid #3fa37a; padding: 14px; margin: 12px 0; }
+  .step h3 { margin: 0 0 6px; color: #7fe0a8; font-size: 20px; }
+  .step p { margin: 6px 0; }
+  .shot { margin: 12px 0 4px; }
+  .shot img { display: block; max-width: 100%; border: 2px solid #5c5470; }
+  .shot .cap { color: #5c5470; font-size: 13px; }
+  code { color: #7fe0a8; word-break: break-all; background: #15111d; padding: 1px 4px; }
+  .copy { font: inherit; font-size: 15px; background: #3fa37a; color: #f2eefa; border: 0; padding: 2px 10px; margin-left: 6px; cursor: pointer; }
+  .nav { display: -webkit-flex; display: flex; -webkit-justify-content: space-between; justify-content: space-between; margin-top: 12px; }
+  .btn { font: inherit; font-size: 18px; padding: 12px 18px; border: 3px solid #ffd166; background: #5b3f8c; color: #ffd166; cursor: pointer; -webkit-appearance: none; border-radius: 0; }
+  .btn.ghost { border-color: #5c5470; background: transparent; color: #b9b2c8; }
+  .vm { border: 2px solid #3fa37a; padding: 10px 14px; margin: 18px 0 10px; }
+  .vm h4, .dual h4 { margin: 0 0 4px; }
+  .vm h4 { color: #7fe0a8; }
+  .dual { border: 2px dashed #b8792b; padding: 10px 14px; margin: 10px 0; }
+  .dual h4 { color: #b8792b; }
+  .muted { color: #5c5470; font-size: 15px; }
+  .muted a { color: #b9b2c8; }
+
+  /* Mock screens: illustrations, labelled as such, not real screenshots */
+  .mock { background: #f2eefa; color: #15111d; font: 14px/1.4 -apple-system, "Segoe UI", sans-serif; border: 2px solid #5c5470; max-width: 420px; }
+  .mock .title { background: #d9d4e4; padding: 4px 8px; font-size: 12px; color: #444; }
+  .mock .body { padding: 12px; }
+  .mock .hl { outline: 3px solid #ffd166; outline-offset: 2px; background: #fff4cf; }
+  .mock .btnm { display: inline-block; border: 1px solid #999; border-radius: 5px; padding: 3px 10px; margin: 6px 6px 0 0; background: #fff; }
+  .mock.dark { background: #15111d; color: #e8e4f0; font-family: Menlo, monospace; }
+  .mock.dark .title { background: #2a1f45; color: #b9b2c8; }
+  .mock.dark .hl { background: #3a2f10; color: #ffd166; }
+  .mock .bar { display: -webkit-flex; display: flex; -webkit-justify-content: space-around; justify-content: space-around; padding: 8px; background: #d9d4e4; font-size: 22px; }
+  .mock .appgrid span { display: inline-block; width: 64px; text-align: center; margin: 6px; font-size: 11px; vertical-align: top; }
+  .mock .appgrid img, .mock .appgrid i { display: block; width: 48px; height: 48px; margin: 0 auto 3px; border-radius: 11px; background: #b9b2c8; }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <main>
-  <div class="bar"><span><b>CORVUS</b> / get it</span><span id="clock">--:--:--</span></div>
-  <pre class="crow" id="crow" aria-hidden="true">   .__
-   (o )>
-   / )
-  /_/</pre>
-  <h1 id="title" aria-label="CORVUS"></h1>
-  <p class="tag">an original TempleOS-spirited OS for ARM64. runs right here. <span class="cur">&nbsp;</span></p>
+  <div class="topbar"><span><b>CORVUS</b> / get it</span><span id="clock">--:--:--</span></div>
+  <div class="hero">
+    <img src="icons/icon-192.png" alt="The Corvus crow with its lantern">
+    <div><h1 id="title" aria-label="CORVUS">CORVUS</h1>
+      <p class="tag">an operating system you can talk to. Rust, from scratch, TempleOS spirit.</p></div>
+  </div>
 
-  <a class="big" id="primary" href="app/">Open Corvus</a>
-  <p class="sub" id="primary-sub">detecting your device...</p>
+  <div class="crow" aria-live="polite">
+    <img src="icons/icon-192.png" alt="">
+    <div class="bubble" id="say">caw. three quick questions and I'll walk you in.</div>
+  </div>
 
-  <div id="details"></div>
+  <section id="ask">
+    <div class="steplabel" id="ask-label">question 1 of 3</div>
+    <div class="progress"><i id="ask-bar" style="width:0"></i></div>
+    <h2 id="ask-title"></h2>
+    <div class="choices" id="choices"></div>
+    <div class="row"><button class="link" id="back" type="button">&larr; back</button><span></span></div>
+  </section>
 
-  <nav id="others" aria-label="Other platforms">other devices:
-    <a href="#ios" data-os="ios">iPad/iPhone</a>
-    <a href="#android" data-os="android">Android</a>
-    <a href="#mac" data-os="mac">macOS</a>
-    <a href="#windows" data-os="windows">Windows</a>
-    <a href="#linux" data-os="linux">Linux/Unix</a>
-    <a href="app/">web app</a>
-  </nav>
-  <p class="muted">MIT licensed. <a href="https://github.com/gabe-maxxing/corvus-noctis" style="color:inherit">source</a> · builds come from the <a href="https://github.com/gabe-maxxing/corvus-noctis/releases/tag/nightly" style="color:inherit">nightly release</a> of main, only when CI is green.</p>
+  <section id="result" hidden>
+    <a class="big" id="primary" href="app/">Open Corvus</a>
+    <p class="sub" id="primary-sub"></p>
+    <div class="steplabel" id="guide-label"></div>
+    <div class="progress"><i id="guide-bar" style="width:0"></i></div>
+    <div id="guide"></div>
+    <div class="nav">
+      <button class="btn ghost" id="prev" type="button">&larr; back</button>
+      <button class="btn" id="next" type="button">next step &rarr;</button>
+    </div>
+    <div id="vm"></div>
+    <div class="row"><button class="link" id="restart" type="button">change my answers</button>
+      <a href="app/" id="webapp" class="muted">or just open the web app</a></div>
+  </section>
+
+  <p class="muted">MIT licensed. <a href="https://github.com/gabe-maxxing/corvus-noctis">source</a> ·
+    downloads come from the <a href="https://github.com/gabe-maxxing/corvus-noctis/releases/tag/nightly">nightly release</a>,
+    rebuilt only when CI is green · works offline once loaded.</p>
 </main>
 <script src="landing.js"></script>
 </body>
