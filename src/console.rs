@@ -2,6 +2,9 @@
 //! a large HELP button and a bitmap text terminal mirroring the serial shell.
 
 use crate::frames::Frames;
+#[cfg(not(target_arch = "wasm32"))]
+#[path = "noctis_ui.rs"]
+mod noctis_ui;
 use crate::ramfb::{rgb, Framebuffer, Scaled, HEIGHT, WIDTH};
 use embedded_graphics::mono_font::{ascii::FONT_10X20, MonoTextStyle};
 use embedded_graphics::prelude::*;
@@ -23,13 +26,20 @@ const GLYPH_H: usize = 20;
 const TERM_X: usize = 16;
 const TERM_Y: usize = 156;
 const COLS: usize = (WIDTH - 2 * TERM_X) / GLYPH_W;
+#[cfg(target_arch = "wasm32")]
 const ROWS: usize = (HEIGHT - TERM_Y - 8) / GLYPH_H;
+#[cfg(not(target_arch = "wasm32"))]
+const ROWS: usize = (HEIGHT - TERM_Y - 36) / GLYPH_H;
 
 pub const LOGO_X: usize = 16;
 pub const LOGO_Y: usize = 12;
 
 /// The large on-screen HELP control, in framebuffer pixels.
+#[cfg(target_arch = "wasm32")]
 pub const HELP_BUTTON: (usize, usize, usize, usize) = (572, 16, 212, 120);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub const HELP_BUTTON: (usize, usize, usize, usize) = (16,112,180,36);
 
 #[derive(Clone, Copy, PartialEq)]
 enum Escape {
@@ -49,6 +59,14 @@ pub struct Console {
     param: u32,
     pub has_logo: bool,
     pub logo_requested: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    animation_until: u64,
+    #[cfg(not(target_arch = "wasm32"))]
+    animation_next: u64,
+    #[cfg(not(target_arch = "wasm32"))]
+    status_second: u64,
+    #[cfg(not(target_arch = "wasm32"))]
+    status_online: bool,
 }
 
 impl Console {
@@ -64,9 +82,18 @@ impl Console {
             param: 0,
             has_logo: false,
             logo_requested: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            animation_until: 0,
+            #[cfg(not(target_arch = "wasm32"))]
+            animation_next: 0,
+            #[cfg(not(target_arch = "wasm32"))]
+            status_second: u64::MAX,
+            #[cfg(not(target_arch = "wasm32"))]
+            status_online: false,
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub fn draw_chrome(&mut self, logo: Option<&Frames>) {
         self.fb.fill(0, 0, WIDTH, HEIGHT, BACKGROUND);
         let title_x = match logo {
@@ -107,6 +134,7 @@ impl Console {
         let _ = Text::with_baseline(text, Point::zero(), style, Baseline::Top).draw(&mut target);
     }
 
+    #[cfg(target_arch = "wasm32")]
     pub fn draw_help_button(&mut self, pressed: bool) {
         let (x, y, w, h) = HELP_BUTTON;
         let (fill, label) = if pressed { (GOLD, PURPLE_DARK) } else { (PURPLE, GOLD) };

@@ -38,3 +38,11 @@
 - Multiline braces use `.. `; Ctrl-C clears continuation or interrupts evaluation. Serial type-ahead is deferred while polling cancellation. Shell state moved to static BSS so its arenas do not consume the 64 KiB kernel stack.
 - Tests exercise strings/variables, precedence, short circuit, skipped branches, drawing/default colour, while limits, reset/exhaustion, continuation/cancellation, deep nesting and 512 deterministic malformed inputs. Added a direct cancellation-before-execution test. Rendering clips Draw to the existing framebuffer; no web source changes.
 - CI caught a web regression before merging #4: Rust Closure callbacks introduced non-MVP reference types. Replaced them with a primitive-only timer import and an ES2017 module callback. The existing MVP and syntax checks now pass locally; no old-Safari check was weakened.
+
+## Kernel sprint / 5. Noctis kernel chrome
+
+- Added an original pixel crow/lantern, a timed 1.5-second animated boot splash, CORVUS NOCTIS title/tagline, palette swatches and HELP/DIO/CROW/CLEAR controls. `logo` replays the built-in mark even without an optional frames asset.
+- Status line shows generic uptime and Dio readiness; the host bridge probes local installed models after boot and every 30 seconds. Status frames do not consume a pending answer. Buttons leave conversation/continuation safely before dispatching.
+- Kernel layout reserves the status line below terminal rows. Target-specific chrome keeps Claude's web canvas layout/HELP hit target intact; shared commands and colours still compile there. No web/www or .github source changes.
+- QEMU proof now checks all four controls and the actual ready-status pixels, and records PNG visual evidence in its existing CI log. This avoids changing Claude's artifact workflow. Local host contracts and warning-free kernel/web builds remain required; CI gates the kernel, pointer proof and MVP/ES2017 web output.
+- PR #5 merged with real-kernel CrowC and pointer proof passing. The temporary browser timer regression from #4 was corrected before merge, and actual browser sleep/cancellation/import checks passed.

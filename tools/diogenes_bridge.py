@@ -50,8 +50,10 @@ def ask(text, persona=PERSONA):
 
 class Protocol:
     """Bounded streaming parser; request delimiters may cross pipe reads."""
-    def __init__(self, request):
+    def __init__(self, request, boot=None):
         self.request = request
+        self.boot = boot
+        self.tail = b""
         self.frame = None
         self.overflow = False
 
@@ -71,7 +73,12 @@ class Protocol:
                 self.frame.append(byte)
             else:
                 self.overflow = True
-        return bytes(visible)
+        data = bytes(visible)
+        self.tail = (self.tail + data)[-32:]
+        if self.boot and b"corvus> " in self.tail:
+            callback, self.boot = self.boot, None
+            callback()
+        return data
 
 
 class Bridge:
@@ -81,8 +88,26 @@ class Bridge:
         self.lock = threading.Lock()
         self.generation = 0
         self.jobs = queue.Queue(maxsize=1)
-        self.protocol = Protocol(self.request)
+        self.protocol = Protocol(self.request, lambda: threading.Thread(target=self.status, daemon=True).start())
         threading.Thread(target=self.worker, daemon=True).start()
+
+    def status(self):
+        while True:
+            try:
+                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                with opener.open("http://127.0.0.1:11434/api/tags", timeout=2) as response:
+                    models = json.loads(response.read(65537)).get("models", [])
+                names = {m.get("name", "") for m in models}
+                ready = MODEL in names or MODEL + ":latest" in names
+            except (OSError, ValueError, TypeError, AttributeError, urllib.error.URLError):
+                ready = False
+            try:
+                with self.lock:
+                    self.stdin.write(b"\x1eDIO_STATUS " + (b"ready" if ready else b"offline") + b"\x1f")
+                    self.stdin.flush()
+            except (OSError, ValueError):
+                return
+            time.sleep(30)
 
     def input(self, data):
         with self.lock:
