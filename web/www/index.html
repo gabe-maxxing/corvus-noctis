@@ -3,23 +3,49 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#000000">
-<title>Corvus OS: get it</title>
+<meta name="theme-color" content="#0c0a10">
+<meta name="description" content="Corvus Noctis: an operating system you can talk to. Rust, from scratch, TempleOS spirit. Runs in your browser, even offline.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Corvus Noctis">
+<meta property="og:title" content="Corvus Noctis: get it">
+<meta property="og:description" content="An operating system you can talk to. Rust, from scratch, TempleOS spirit.">
+<meta property="og:url" content="https://gabe-maxxing.github.io/corvus-noctis/">
+<meta property="og:image" content="https://gabe-maxxing.github.io/corvus-noctis/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Corvus Noctis: a crow holding a lantern">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://gabe-maxxing.github.io/corvus-noctis/social-preview.png">
+<link rel="apple-touch-icon" sizes="57x57" href="icons/apple-touch-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="icons/apple-touch-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="icons/apple-touch-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="icons/apple-touch-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="icons/apple-touch-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icons/apple-touch-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="icons/apple-touch-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167x167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180x180.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/icon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<title>Corvus Noctis: get it</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <style>
   /* 16 colours, like it should be. */
   :root {
-    --c0:#000000; --c1:#0000aa; --c2:#00aa00; --c3:#00aaaa; --c4:#aa0000; --c5:#aa00aa; --c6:#aa5500; --c7:#aaaaaa;
-    --c8:#555555; --c9:#5555ff; --c10:#55ff55; --c11:#55ffff; --c12:#ff5555; --c13:#ff55ff; --c14:#ffff55; --c15:#ffffff;
+    /* 16 colours, Corvus edition: ink, night purple, lantern gold. */
+    --c0:#0c0a10; --c1:#2a1f45; --c2:#3fa37a; --c3:#3fb7c4; --c4:#c2413b; --c5:#5b3f8c; --c6:#b8792b; --c7:#b9b2c8;
+    --c8:#5c5470; --c9:#8c6fd1; --c10:#7fe0a8; --c11:#8fe8f0; --c12:#ff7a70; --c13:#c9a7ff; --c14:#ffd166; --c15:#f2eefa;
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--c0); color: var(--c15); font: 18px/1.45 ui-monospace, Menlo, Consolas, monospace; }
   body { padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
   main { max-width: 760px; margin: 0 auto; }
-  .bar { background: var(--c1); color: var(--c14); padding: 2px 8px; display: flex; justify-content: space-between; }
+  .bar { background: var(--c5); color: var(--c14); padding: 2px 8px; display: flex; justify-content: space-between; }
   .bar b { color: var(--c15); }
   pre.crow { color: var(--c13); margin: 18px 0 4px; font-size: 20px; line-height: 1.15; }
   h1 { font-size: 56px; font-size: clamp(40px, 11vw, 84px); margin: 0; letter-spacing: 0.18em; line-height: 1; }

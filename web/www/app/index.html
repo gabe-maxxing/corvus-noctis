@@ -7,14 +7,37 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-startup-image" href="../icons/icon-512.png">
 <meta name="apple-mobile-web-app-title" content="Corvus">
 <link rel="manifest" href="../manifest.json">
 <link rel="icon" type="image/png" href="../favicon.png">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="description" content="Corvus Noctis: an operating system you can talk to. Rust, from scratch, TempleOS spirit. Runs in your browser, even offline.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Corvus Noctis">
+<meta property="og:title" content="Corvus Noctis: the console">
+<meta property="og:description" content="An operating system you can talk to. Rust, from scratch, TempleOS spirit.">
+<meta property="og:url" content="https://gabe-maxxing.github.io/corvus-noctis/app/">
+<meta property="og:image" content="https://gabe-maxxing.github.io/corvus-noctis/social-preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Corvus Noctis: a crow holding a lantern">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://gabe-maxxing.github.io/corvus-noctis/social-preview.png">
+<link rel="apple-touch-icon" sizes="57x57" href="../icons/apple-touch-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="../icons/apple-touch-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="../icons/apple-touch-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="../icons/apple-touch-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="../icons/apple-touch-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="../icons/apple-touch-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="../icons/apple-touch-icon-144x144.png">
 <link rel="apple-touch-icon" sizes="152x152" href="../icons/apple-touch-icon-152x152.png">
 <link rel="apple-touch-icon" sizes="167x167" href="../icons/apple-touch-icon-167x167.png">
 <link rel="apple-touch-icon" sizes="180x180" href="../icons/apple-touch-icon-180x180.png">
-<title>Corvus OS</title>
+<link rel="icon" type="image/png" sizes="16x16" href="../icons/icon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
+<title>Corvus Noctis</title>
 <style>
   :root { color-scheme: dark; }
   html, body { margin: 0; background: #0c0a10; color: #e8e4f0; font: 16px/1.4 Menlo, ui-monospace, monospace; }
@@ -32,9 +55,30 @@
            background: #5b3f8c; color: #ffd166; -webkit-appearance: none; }
   footer { color: #8a80a0; font-size: 13px; padding: 8px; text-align: center; }
   footer a { color: #8a80a0; }
+  /* Boot splash: the crow lights the lantern while the wasm loads. */
+  #splash { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; background: #0c0a10;
+            display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column;
+            -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center;
+            -webkit-transition: opacity 0.45s; transition: opacity 0.45s; }
+  #splash.gone { opacity: 0; pointer-events: none; }
+  #splash img { width: 168px; height: 168px; -webkit-animation: bob 1.6s ease-in-out infinite; animation: bob 1.6s ease-in-out infinite; }
+  #splash h1 { color: #ffd166; font-size: 34px; letter-spacing: 0.22em; margin: 18px 0 4px; }
+  #splash p { color: #b9b2c8; margin: 0 0 18px; }
+  #splash .bar { width: 220px; height: 10px; border: 2px solid #5b3f8c; }
+  #splash .bar i { display: block; height: 100%; width: 0; background: #ffd166; -webkit-transition: width 0.3s; transition: width 0.3s; }
+  #splash small { color: #5c5470; margin-top: 10px; }
+  @-webkit-keyframes bob { 50% { -webkit-transform: translateY(-6px); } }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
 </style>
 </head>
 <body>
+<div id="splash" role="status" aria-label="Corvus is booting">
+  <img src="../icons/icon-512.png" alt="">
+  <h1>CORVUS</h1>
+  <p>an operating system you can talk to</p>
+  <div class="bar"><i id="splash-bar"></i></div>
+  <small id="splash-line">lighting the lantern...</small>
+</div>
 <canvas id="screen" width="800" height="600" aria-label="Corvus OS console"></canvas>
 <form id="line" autocomplete="off">
   <input id="input" placeholder="type a command, e.g. calc (2 + 3) * 4" autocapitalize="off" autocorrect="off"

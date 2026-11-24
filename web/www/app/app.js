@@ -209,7 +209,27 @@ if (window.PointerEvent) {
 }
 
 // --- boot ----------------------------------------------------------------
+var splash = document.getElementById("splash");
+var splashBar = document.getElementById("splash-bar");
+var splashLine = document.getElementById("splash-line");
+var bootStart = Date.now();
+var CAWS = ["lighting the lantern...", "polishing 16 colours...", "waking the crow...", "looking for a man..."];
+var cawIndex = 0;
+var cawTimer = setInterval(function () { cawIndex = (cawIndex + 1) % CAWS.length; if (splashLine) splashLine.textContent = CAWS[cawIndex]; }, 700);
+function splashProgress(pct) { if (splashBar) splashBar.style.width = pct + "%"; }
+function hideSplash() {
+  clearInterval(cawTimer);
+  splashProgress(100);
+  setTimeout(function () {
+    if (!splash) return;
+    splash.className = "gone";
+    setTimeout(function () { splash.parentNode && splash.parentNode.removeChild(splash); }, 500);
+  }, Math.max(0, 700 - (Date.now() - bootStart)));
+}
+splashProgress(35);
+
 export var ready = init({ module_or_path: "pkg/corvus_web_bg.wasm" }).then(function (exports) {
+  splashProgress(80);
   wasm = exports;
   W = corvus.width();
   H = corvus.height();
@@ -220,7 +240,12 @@ export var ready = init({ module_or_path: "pkg/corvus_web_bg.wasm" }).then(funct
     requestAnimationFrame(frame);
   })(0);
   setStatus("running");
+  hideSplash();
   if (window.matchMedia && matchMedia("(pointer: fine)").matches) input.focus();
+}, function (error) {
+  clearInterval(cawTimer);
+  if (splashLine) splashLine.textContent = "the crow fell off its perch: " + (error && error.message ? error.message : error);
+  throw error;
 });
 
 if ("serviceWorker" in navigator) {
