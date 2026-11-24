@@ -1,0 +1,6 @@
+[build]
+target = "aarch64-unknown-none-softfloat"
+
+[target.aarch64-unknown-none-softfloat]
+rustflags = ["-C", "link-arg=-Tlinker.ld"]
+runner = ["qemu-system-aarch64", "-machine", "virt", "-cpu", "cortex-a57", "-nic", "none", "-display", "none", "-serial", "stdio", "-monitor", "none", "-kernel"]

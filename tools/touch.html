@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Corvus OS</title>
+<style>
+body { margin: 0; background: #100c15; color: #e8dff1; font: 16px Menlo, monospace; }
+main { max-width: 780px; padding: 28px 18px; margin: auto; }
+h1 { margin: 0 0 18px; letter-spacing: .2em; color: #e3a7ff; }
+img { max-width: 100%; max-height: 220px; display: block; margin-bottom: 16px; }
+pre { white-space: pre-wrap; overflow-wrap: break-word; min-height: 180px; max-height: 45vh;
+      overflow: auto; background: #1b1424; border: 1px solid #705383; padding: 18px; }
+button, input { box-sizing: border-box; min-height: 48px; padding: 10px; font: inherit; color: inherit;
+                background: #21162b; border: 1px solid #9364af; border-radius: 0; margin: 4px 0; }
+button { cursor: pointer; min-width: 74px; }
+input { width: 67%; }
+</style>
+</head>
+<body><main>
+<h1>Corvus OS</h1>
+<img hidden alt="Corvus animation" id="art">
+<pre id="terminal" role="log" aria-label="Kernel output">Connecting to kernel…</pre>
+<div id="commands">
+  <button type="button" value="help">Help</button>
+  <button type="button" value="about">About</button>
+  <button type="button" value="crow">Crow</button>
+  <button type="button" value="clear">Clear</button>
+</div>
+<form id="shell">
+  <input id="line" aria-label="Kernel command" maxlength="128" autocomplete="off"
+    autocapitalize="off" spellcheck="false" placeholder="Kernel command" required>
+  <button type="submit">Run</button>
+</form>
+</main><script>
+(function () {
+  var terminal = document.getElementById("terminal");
+  var line = document.getElementById("line");
+  var art = document.getElementById("art");
+  var pending = true;
+  art.onload = function () { art.hidden = false; };
+  art.src = "/corvus.gif";
+  function request(method, path, value, done) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(method, path);
+    xhr.timeout = 7000;
+    xhr.onloadend = function () { done(xhr.status, xhr.responseText); };
+    if (method === "POST") xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.send(value);
+  }
+  function run(command) {
+    if (pending || !command) return;
+    pending = true;
+    request("POST", "/command", JSON.stringify(command), function (status, output) {
+      pending = false;
+      if (status !== 200) {
+        terminal.textContent += "\nCommand failed. Use 1–128 printable ASCII characters.\ncorvus> ";
+      } else if (command.trim() === "clear") {
+        terminal.textContent = "corvus> ";
+      } else {
+        terminal.textContent += output;
+      }
+      terminal.scrollTop = terminal.scrollHeight;
+    });
+  }
+  request("GET", "/boot", null, function (status, output) {
+    pending = false;
+    terminal.textContent = status === 200 ? output : "Kernel unavailable.";
+  });
+  document.getElementById("commands").addEventListener("click", function (event) {
+    if (event.target.tagName === "BUTTON") run(event.target.value);
+  });
+  document.getElementById("shell").addEventListener("submit", function (event) {
+    event.preventDefault();
+    if (pending) return;
+    run(line.value);
+    line.value = "";
+  });
+}());
+</script></body></html>
