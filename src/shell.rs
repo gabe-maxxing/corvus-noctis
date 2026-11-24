@@ -3,8 +3,10 @@
 //! each provides `crate::print` and `crate::calc`.
 
 use crate::{calc, print};
+#[path = "shell_platform.rs"]
+pub mod platform;
 
-const COMMANDS: &[&str] = &["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit"];
+const COMMANDS: &[&str] = &["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit", "time", "uptime", "mem", "color", "banner", "repeat", "sleep", "logo", "lantern"];
 const HISTORY: usize = 16;
 
 /// One row of Levenshtein state; bounded by the command vocabulary.
@@ -37,7 +39,7 @@ fn command(line: &str) -> bool {
     let line = line.trim();
     match line {
         "" => {}
-        "help" => print("help  about  crow  clear  echo <text>  calc <expr>  dio [question]  history\n"),
+        "help" => print("help  about  crow  clear  echo <text>  calc <expr>  dio [question]  history\ntime  uptime  mem  color <0-15>  banner <text>\nrepeat <1-32> <command>  sleep <ms>  logo  lantern\n"),
         "about" => print("Corvus OS 0.2 | Rust bare metal | QEMU virt | ramfb + virtio-tablet\n"),
         "crow" => banner(),
         "clear" => print("\x1b[2J\x1b[H"),
@@ -99,6 +101,8 @@ pub struct Shell {
     draft: [u8; 128],
     draft_len: usize,
     escape: u8,
+    sleeping: Option<u64>,
+    pub graphics: for<'a> fn(platform::Effect<'a>),
 }
 
 impl Shell {
@@ -107,7 +111,7 @@ impl Shell {
             llm_mode: false, waiting: false, receiving: false, reply: [0; 2048],
             reply_len: 0, now_ms: 0, deadline: 0, dio_online: false, unknown: 0,
             history: [[0; 128]; HISTORY], history_lens: [0; HISTORY], history_count: 0,
-            history_cursor: 0, draft: [0; 128], draft_len: 0, escape: 0 }
+            history_cursor: 0, draft: [0; 128], draft_len: 0, escape: 0, sleeping: None, graphics: platform::render }
     }
 
     fn prompt(&self) {
@@ -117,6 +121,9 @@ impl Shell {
     /// Called from the event loop; never block pointer input on a host model.
     pub fn tick(&mut self, now_ms: u64) {
         self.now_ms = now_ms;
+        if self.sleeping.is_some_and(|until| now_ms >= until) {
+            self.sleeping = None; self.prompt();
+        }
         if self.waiting && now_ms >= self.deadline {
             self.waiting = false;
             self.dio_online = false;
@@ -133,7 +140,8 @@ impl Shell {
             return;
         }
         self.waiting = true;
-        self.deadline = self.now_ms.saturating_add(45_000);
+        self.deadline = platform::clock(self.now_ms).saturating_add(45_000);
+        platform::wake_after(45_000);
         // Protocol bytes go only to UART, never to the framebuffer terminal.
         #[cfg(all(target_arch = "aarch64", target_os = "none"))]
         let output: fn(&str) = crate::uart::protocol;
@@ -190,6 +198,52 @@ impl Shell {
     }
 
     fn dispatch(&mut self, text: &str) {
+        let (name, args) = text.split_once(' ').unwrap_or((text, ""));
+        let args = args.trim();
+        match name {
+            "time" | "uptime" => {
+                let mut digits = [0; 20]; print("uptime: ");
+                print(calc::format(platform::clock(self.now_ms).min(i64::MAX as u64) as i64, &mut digits));
+                print(" ms (generic monotonic timer)\n"); self.unknown = 0; return;
+            }
+            "mem" => { platform::memory(core::mem::size_of::<Self>()); self.unknown = 0; return; }
+            "color" => {
+                const ANSI: [&str; 16] = ["\x1b[30m", "\x1b[34m", "\x1b[32m", "\x1b[36m", "\x1b[31m", "\x1b[35m", "\x1b[33m", "\x1b[37m", "\x1b[90m", "\x1b[94m", "\x1b[92m", "\x1b[96m", "\x1b[91m", "\x1b[95m", "\x1b[93m", "\x1b[97m"];
+                if let Ok(n @ 0..=15) = args.parse::<usize>() { print(ANSI[n]); }
+                else { print("usage: color <0-15>\n"); }
+                self.unknown = 0; return;
+            }
+            "banner" => {
+                if args.is_empty() || args.len() > 38 { print("usage: banner <1-38 characters>\n"); }
+                else { (self.graphics)(platform::Effect::Banner(args)); print(args); print("\n"); }
+                self.unknown = 0; return;
+            }
+            "logo" => { (self.graphics)(platform::Effect::Logo); banner(); self.unknown = 0; return; }
+            "lantern" => {
+                print("     .----.\n     | /\\ |   DIOGENES\n    /|/  \x5c|\\  looking for an honest human\n    +------+\n    |  **  |\n    | *  * |\n    +------+\n       ||\n    ___||___\n");
+                self.unknown = 0; return;
+            }
+            "sleep" => {
+                if let Ok(ms @ 0..=60_000) = args.parse::<u64>() {
+                    self.sleeping = Some(platform::clock(self.now_ms).saturating_add(ms));
+                    platform::wake_after(ms);
+                } else { print("usage: sleep <0-60000 ms>; Ctrl-C cancels\n"); }
+                self.unknown = 0; return;
+            }
+            "repeat" => {
+                if let Some((count, command)) = args.split_once(' ') {
+                    if let Ok(n @ 1..=32) = count.parse::<usize>() {
+                        let first = command.trim().split_ascii_whitespace().next().unwrap_or("");
+                        if !["repeat", "sleep", "dio"].contains(&first) && !first.starts_with('?') && !first.is_empty() {
+                            for _ in 0..n { self.dispatch(command.trim()); }
+                            return;
+                        }
+                    }
+                }
+                print("usage: repeat <1-32> <command>; no nested repeat, sleep or dio\n"); return;
+            }
+            _ => {}
+        }
         if text == "history" {
             for i in 0..self.history_count {
                 let mut digits = [0; 20];
@@ -228,12 +282,13 @@ impl Shell {
             }
         }
         self.length = 0;
-        if !self.waiting { self.prompt(); }
+        if !self.waiting && self.sleeping.is_none() { self.prompt(); }
     }
 
     pub fn feed(&mut self, byte: u8) {
         if byte == 3 {
             self.waiting = false;
+            self.sleeping = None;
             self.length = 0;
             self.previous_was_cr = false;
             self.escape = 0;
@@ -254,7 +309,7 @@ impl Shell {
             }
             return;
         }
-        if self.waiting { return; }
+        if self.waiting || self.sleeping.is_some() { return; }
         if self.escape != 0 {
             match (self.escape, byte) {
                 (1, b'[' | b'O') => self.escape = 2,
@@ -290,7 +345,7 @@ impl Shell {
 
     /// Runs a command exactly as if it had been typed at the prompt.
     pub fn run_as_typed(&mut self, text: &str) {
-        if self.waiting { self.feed(3); }
+        if self.waiting || self.sleeping.is_some() { self.feed(3); }
         while self.length > 0 {
             self.feed(8);
         }

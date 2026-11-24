@@ -7,6 +7,10 @@ use embedded_graphics::mono_font::{ascii::FONT_10X20, MonoTextStyle};
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::{Baseline, Text};
 
+pub const PALETTE: [u32; 16] = [
+    0x0c0a10, 0x364a8c, 0x377d55, 0x3b8793, 0xa34555, 0x5b3f8c, 0xa87840, 0xc4becf,
+    0x70677e, 0x809bef, 0x8bd19c, 0x8adce5, 0xef8792, 0xbda0ed, 0xffd166, 0xf5f1ff,
+];
 const BACKGROUND: u32 = 0x0c0a10;
 const PURPLE: u32 = 0x5b3f8c;
 const PURPLE_DARK: u32 = 0x2a1f40;
@@ -44,6 +48,7 @@ pub struct Console {
     escape: Escape,
     param: u32,
     pub has_logo: bool,
+    pub logo_requested: bool,
 }
 
 impl Console {
@@ -58,6 +63,7 @@ impl Console {
             escape: Escape::None,
             param: 0,
             has_logo: false,
+            logo_requested: false,
         }
     }
 
@@ -78,6 +84,12 @@ impl Console {
         self.fb.fill(0, 146, WIDTH, 2, PURPLE);
         self.draw_help_button(false);
         self.redraw_cursor(true);
+    }
+
+    pub fn large_banner(&mut self, text: &str) {
+        if self.row + 3 >= ROWS { self.newline(); self.newline(); self.newline(); }
+        self.big_text(text, TERM_X, TERM_Y + self.row * GLYPH_H, 2, self.color);
+        self.row = (self.row + 3).min(ROWS - 1); self.col = 0;
     }
 
     pub fn frame(&mut self, frames: &Frames, index: usize) {
@@ -164,10 +176,14 @@ impl Console {
             }
             Escape::Params => {
                 match byte {
-                    b'0'..=b'9' => self.param = self.param * 10 + (byte - b'0') as u32,
+                    b'0'..=b'9' => self.param = self.param.saturating_mul(10).saturating_add((byte - b'0') as u32),
                     b';' => self.param = 0,
                     b'm' => {
-                        self.color = if self.param == 35 { PURPLE + 0x202020 } else { TEXT };
+                        self.color = match self.param {
+                            30..=37 => PALETTE[[0,4,2,6,1,5,3,7][(self.param - 30) as usize]],
+                            90..=97 => PALETTE[[8,12,10,14,9,13,11,15][(self.param - 90) as usize]],
+                            _ => TEXT,
+                        };
                         self.escape = Escape::None;
                     }
                     b'J' => {

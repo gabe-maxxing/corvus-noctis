@@ -23,3 +23,11 @@
 - Added 16-entry RAM history, arrow recall with draft restoration, and unique-prefix Tab completion (ambiguous prefixes list options). No heap or persistent transcript. Full command vocabulary stays in one table for future additions.
 - Host contracts cover typo suggestions/streak reset, recall, draft preservation, completion and history eviction. Each CI pointer proof runs these alongside kernel protocol checks; the shared web build remains mandatory.
 - PR #2 merged after kernel warnings check, prove_pointer PASS and web MVP/ES2017 build succeeded. CI still emits GitHub Action Node-version deprecation notices from Claude-owned .github; compiler warnings are zero. No workflow edits were made here.
+
+## Kernel sprint / 3. Commands and bounded waiting
+
+- Added generic monotonic time/uptime, honest mem accounting (reserved/static bytes, not invented free RAM), the 16-colour Corvus palette, large banner text, repeat, sleep, logo replay and original lantern text art. History/completion advertise the new commands.
+- Sleep is an event-loop deadline, not a busy wait: pointer input and Ctrl-C stay responsive. The shared wasm shell schedules its own timer using existing wasm-bindgen, without editing web files. Repeat is capped at 32 and excludes nested/interactive/asynchronous commands to prevent runaway output and ambiguous queued prompts.
+- Large text and logo effects are a narrow rendering boundary reusable by CrowC; the language stays in shell.rs. ANSI numeric parsing saturates instead of overflowing.
+- Tests cover timer boundaries/cancellation, repeat limits, colour validation, memory wording and art commands. Kernel/web builds are warning-free; CI still gates the pointer proof and iOS-compatible web build. PR #3 merged after those checks passed.
+- CI caught a web regression before merging #4: Rust Closure callbacks introduced non-MVP reference types. Replaced them with a primitive-only timer import and an ES2017 module callback. The existing MVP and syntax checks now pass locally; no old-Safari check was weakened.

@@ -42,4 +42,20 @@ fn shell_contract() {
     s.run_as_typed("history"); let out = take();
     assert!(!out.contains("echo slot0\n")); assert!(out.contains("echo slot19\n"));
 
+    s.tick(100_000); s.run_as_typed("uptime"); assert!(take().contains("100000 ms"));
+    s.run_as_typed("mem"); assert!(take().contains("Free RAM is not tracked"));
+    s.run_as_typed("color 15"); assert!(take().contains("\x1b[97m"));
+    s.run_as_typed("color 16"); assert!(take().contains("usage: color"));
+    s.run_as_typed("repeat 3 echo ping"); assert_eq!(take().matches("ping\n").count(), 4);
+    s.run_as_typed("repeat 32 repeat 32 help"); assert!(take().contains("no nested repeat"));
+    s.run_as_typed("sleep 100"); assert!(!take().ends_with("corvus> "));
+    s.tick(100_099); assert_eq!(take(), "");
+    s.tick(100_100); assert_eq!(take(), "corvus> ");
+    s.run_as_typed("sleep 60000"); take(); input(&mut s, b"\x03");
+    assert_eq!(take(), "^C\ncorvus> "); s.tick(200_000); assert_eq!(take(), "");
+    s.run_as_typed("sleep 60001"); assert!(take().contains("usage: sleep"));
+    s.run_as_typed("lantern"); assert!(take().contains("DIOGENES"));
+    s.run_as_typed("banner noctis"); assert!(take().contains("noctis\n"));
+    s.run_as_typed("logo"); assert!(take().contains("C O R V U S"));
+
 }
