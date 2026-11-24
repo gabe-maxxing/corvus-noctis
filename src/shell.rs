@@ -4,17 +4,40 @@
 
 use crate::{calc, print};
 
+const COMMANDS: &[&str] = &["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit"];
+const HISTORY: usize = 16;
+
+/// One row of Levenshtein state; bounded by the command vocabulary.
+fn closest(word: &str) -> &'static str {
+    let mut best = COMMANDS[0];
+    let mut distance = usize::MAX;
+    for &candidate in COMMANDS {
+        let mut row = [0usize; 32];
+        for (i, cell) in row.iter_mut().enumerate() { *cell = i; }
+        for (i, a) in word.bytes().enumerate() {
+            let mut diagonal = row[0]; row[0] = i + 1;
+            for (j, b) in candidate.bytes().enumerate() {
+                let old = row[j + 1];
+                row[j + 1] = (row[j] + 1).min(old + 1).min(diagonal + usize::from(!a.eq_ignore_ascii_case(&b)));
+                diagonal = old;
+            }
+        }
+        if row[candidate.len()] < distance { distance = row[candidate.len()]; best = candidate; }
+    }
+    best
+}
+
 pub fn banner() {
     print("\x1b[35m   .__\n   (o )>   C O R V U S\n   / )     ARM64 / SERIAL CONSOLE\n  /_/      type help\n\x1b[0m");
 }
 
 /// The one command dispatcher. Serial input and the on-screen HELP button
 /// both end up here.
-fn command(line: &str) {
+fn command(line: &str) -> bool {
     let line = line.trim();
     match line {
         "" => {}
-        "help" => print("help  about  crow  clear  echo <text>  calc <expr>\n"),
+        "help" => print("help  about  crow  clear  echo <text>  calc <expr>  dio [question]  history\n"),
         "about" => print("Corvus OS 0.2 | Rust bare metal | QEMU virt | ramfb + virtio-tablet\n"),
         "crow" => banner(),
         "clear" => print("\x1b[2J\x1b[H"),
@@ -25,10 +48,11 @@ fn command(line: &str) {
             } else if line == "calc" || line.starts_with("calc ") {
                 calculate(line[4..].trim_start());
             } else {
-                print("Unknown command. Try help.\n");
+                return false;
             }
         }
     }
+    true
 }
 
 /// `calc <expr>`: 64-bit integer arithmetic with + - * / % and parentheses.
@@ -67,13 +91,23 @@ pub struct Shell {
     now_ms: u64,
     deadline: u64,
     pub dio_online: bool,
+    unknown: u8,
+    history: [[u8; 128]; HISTORY],
+    history_lens: [usize; HISTORY],
+    history_count: usize,
+    history_cursor: usize,
+    draft: [u8; 128],
+    draft_len: usize,
+    escape: u8,
 }
 
 impl Shell {
     pub const fn new() -> Shell {
         Shell { line: [0; 128], length: 0, previous_was_cr: false,
             llm_mode: false, waiting: false, receiving: false, reply: [0; 2048],
-            reply_len: 0, now_ms: 0, deadline: 0, dio_online: false }
+            reply_len: 0, now_ms: 0, deadline: 0, dio_online: false, unknown: 0,
+            history: [[0; 128]; HISTORY], history_lens: [0; HISTORY], history_count: 0,
+            history_cursor: 0, draft: [0; 128], draft_len: 0, escape: 0 }
     }
 
     fn prompt(&self) {
@@ -92,6 +126,7 @@ impl Shell {
     }
 
     fn ask(&mut self, text: &str) {
+        self.unknown = 0;
         if text.is_empty() {
             self.llm_mode = true;
             print("Talk plainly. Type exit to return; Ctrl-C cancels a reply.\n");
@@ -107,14 +142,81 @@ impl Shell {
         output("\x1eDIO "); output(text); output("\n");
     }
 
+    fn remember(&mut self) {
+        if self.length == 0 { return; }
+        if self.history_count == HISTORY {
+            self.history.copy_within(1.., 0); self.history_lens.copy_within(1.., 0);
+            self.history_count -= 1;
+        }
+        self.history[self.history_count] = self.line;
+        self.history_lens[self.history_count] = self.length;
+        self.history_count += 1;
+        self.history_cursor = self.history_count;
+    }
+
+    fn replace_line(&mut self, text: &[u8]) {
+        for _ in 0..self.length { print("\x08 \x08"); }
+        self.length = text.len().min(self.line.len());
+        self.line[..self.length].copy_from_slice(&text[..self.length]);
+        print(core::str::from_utf8(&self.line[..self.length]).unwrap_or(""));
+    }
+
+    fn recall(&mut self, up: bool) {
+        if self.history_count == 0 { return; }
+        if up && self.history_cursor == self.history_count {
+            self.draft = self.line; self.draft_len = self.length;
+        }
+        self.history_cursor = if up { self.history_cursor.saturating_sub(1) }
+            else { (self.history_cursor + 1).min(self.history_count) };
+        let (text, len) = if self.history_cursor == self.history_count { (self.draft, self.draft_len) }
+            else { (self.history[self.history_cursor], self.history_lens[self.history_cursor]) };
+        self.replace_line(&text[..len]);
+    }
+
+    fn complete(&mut self) {
+        if self.llm_mode || self.line[..self.length].contains(&b' ') { return; }
+        let prefix = core::str::from_utf8(&self.line[..self.length]).unwrap_or("");
+        let mut found = ""; let mut count = 0;
+        for &candidate in COMMANDS {
+            if candidate.starts_with(prefix) { found = candidate; count += 1; }
+        }
+        if count == 1 {
+            self.replace_line(found.as_bytes()); self.feed(b' ');
+        } else if count > 1 {
+            print("\n");
+            for &candidate in COMMANDS { if candidate.starts_with(prefix) { print(candidate); print("  "); } }
+            print("\n"); self.prompt(); print(prefix);
+        }
+    }
+
+    fn dispatch(&mut self, text: &str) {
+        if text == "history" {
+            for i in 0..self.history_count {
+                let mut digits = [0; 20];
+                print(calc::format((i + 1) as i64, &mut digits)); print("  ");
+                print(core::str::from_utf8(&self.history[i][..self.history_lens[i]]).unwrap_or("")); print("\n");
+            }
+            self.unknown = 0;
+        } else if command(text) {
+            if !text.is_empty() { self.unknown = 0; }
+        } else {
+            self.unknown = self.unknown.saturating_add(1);
+            let word = text.split_ascii_whitespace().next().unwrap_or(text);
+            print("`"); print(word); print("` isn't a command. Did you mean `");
+            print(closest(word)); print("`? Or just ask Diogenes: dio <your question>\n");
+            if self.unknown >= 2 { print("Not technical? Type `dio` and just talk.\n"); }
+        }
+    }
+
     fn submit(&mut self) {
+        self.remember();
         print("\n");
         let mut copy = [0u8; 128];
         copy[..self.length].copy_from_slice(&self.line[..self.length]);
         if let Ok(text) = core::str::from_utf8(&copy[..self.length]) {
             let text = text.trim();
             if text == "exit" && self.llm_mode {
-                self.llm_mode = false;
+                self.llm_mode = false; self.unknown = 0;
             } else if text == "dio" {
                 self.ask("");
             } else if let Some(question) = text.strip_prefix("dio ").or_else(|| text.strip_prefix('?')) {
@@ -122,7 +224,7 @@ impl Shell {
             } else if self.llm_mode && !text.is_empty() {
                 self.ask(text);
             } else {
-                command(text);
+                self.dispatch(text);
             }
         }
         self.length = 0;
@@ -134,6 +236,7 @@ impl Shell {
             self.waiting = false;
             self.length = 0;
             self.previous_was_cr = false;
+            self.escape = 0;
             print("^C\n"); self.prompt(); return;
         }
         if byte == 0x1e { self.receiving = true; self.reply_len = 0; return; }
@@ -152,12 +255,24 @@ impl Shell {
             return;
         }
         if self.waiting { return; }
+        if self.escape != 0 {
+            match (self.escape, byte) {
+                (1, b'[' | b'O') => self.escape = 2,
+                (2, b'A') => { self.escape = 0; self.recall(true); }
+                (2, b'B') => { self.escape = 0; self.recall(false); }
+                (2, b'0'..=b'9' | b';') => {},
+                _ => self.escape = 0,
+            }
+            return;
+        }
         if byte == b'\n' && self.previous_was_cr {
             self.previous_was_cr = false;
             return;
         }
         self.previous_was_cr = byte == b'\r';
         match byte {
+            0x1b => self.escape = 1,
+            b'\t' => self.complete(),
             b'\n' | b'\r' => self.submit(),
             8 | 127 if self.length > 0 => {
                 self.length -= 1;
@@ -175,6 +290,7 @@ impl Shell {
 
     /// Runs a command exactly as if it had been typed at the prompt.
     pub fn run_as_typed(&mut self, text: &str) {
+        if self.waiting { self.feed(3); }
         while self.length > 0 {
             self.feed(8);
         }

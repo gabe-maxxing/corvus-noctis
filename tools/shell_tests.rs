@@ -27,4 +27,19 @@ fn shell_contract() {
     assert!(take().contains("install Ollama")); assert!(!s.dio_online);
     s.run_as_typed("calc 6*7"); assert!(take().contains("42\n"));
     s.run_as_typed("help"); assert!(take().contains("help  about"));
+    s.run_as_typed("hlep"); let out = take();
+    assert!(out.contains("Did you mean `help`?")); assert!(!out.contains("Not technical?"));
+    s.run_as_typed("wut"); assert!(take().contains("Not technical? Type `dio`"));
+    s.run_as_typed("help"); take();
+    s.run_as_typed("oops"); assert!(!take().contains("Not technical?"));
+    s.run_as_typed("echo remembered"); take();
+    input(&mut s, b"\x1b[A\r"); assert!(take().contains("remembered\n"));
+    input(&mut s, b"echo draft\x1b[A\x1b[B\r"); assert!(take().contains("draft\n"));
+    input(&mut s, b"ec\tcompleted\r"); assert!(take().contains("completed\n"));
+    input(&mut s, b"h\t"); let out = take(); assert!(out.contains("help") && out.contains("history"));
+    input(&mut s, b"\x03"); take();
+    for n in 0..20 { s.run_as_typed(&format!("echo slot{n}")); take(); }
+    s.run_as_typed("history"); let out = take();
+    assert!(!out.contains("echo slot0\n")); assert!(out.contains("echo slot19\n"));
+
 }
