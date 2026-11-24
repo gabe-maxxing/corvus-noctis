@@ -25,11 +25,17 @@ jobs:
           if grep -q '^warning' build.log; then echo "::error::kernel build has warnings"; exit 1; fi
       - name: Pointer proof (HELP button == serial help)
         run: python3 tools/prove_pointer.py
-      - name: Check web edition compiles (no warnings allowed)
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/wasm-bindgen
+          key: wasm-bindgen-cli-0.2.130
+      - name: Build web edition (no warnings, MVP wasm, ES2017 for iOS 12)
         run: |
           rustup target add wasm32-unknown-unknown
-          cd web && cargo build --release 2>&1 | tee ../web.log
-          if grep -q '^warning' ../web.log; then echo "::error::web build has warnings"; exit 1; fi
+          command -v wasm-bindgen || cargo install wasm-bindgen-cli --version =0.2.130 --locked
+          (cd web && cargo build --release 2>&1 | tee ../web.log)
+          if grep -q '^warning' web.log; then echo "::error::web build has warnings"; exit 1; fi
+          .github/scripts/build-web.sh ci
       - name: Check installers
         run: |
           sh -n dist/install.sh && sh -n mac/make-app.sh
