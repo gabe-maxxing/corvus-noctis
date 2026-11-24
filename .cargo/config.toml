@@ -3,4 +3,6 @@ target = "aarch64-unknown-none-softfloat"
 
 [target.aarch64-unknown-none-softfloat]
 rustflags = ["-C", "link-arg=-Tlinker.ld"]
-runner = ["qemu-system-aarch64", "-machine", "virt", "-cpu", "cortex-a57", "-nic", "none", "-display", "none", "-serial", "stdio", "-monitor", "none", "-kernel"]
+# Opens a QEMU window (ramfb + virtio tablet) and keeps the shell on this
+# terminal's serial. CORVUS_DISPLAY=none runs headless.
+runner = "tools/qemu.sh"

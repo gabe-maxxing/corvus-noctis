@@ -92,8 +92,8 @@ def main():
     subprocess.run(["cargo", "build", "--release"], cwd=ROOT, check=True)
     kernel = ROOT / "target/aarch64-unknown-none-softfloat/release/corvus-os"
     vm = subprocess.Popen(
-        ["qemu-system-aarch64", "-machine", "virt", "-cpu", "cortex-a57", "-nic", "none", "-display", "none",
-         "-serial", "stdio", "-monitor", "none", "-kernel", str(kernel)],
+        [str(ROOT / "tools/qemu.sh"), str(kernel)],
+        env={**os.environ, "CORVUS_DISPLAY": os.environ.get("CORVUS_DISPLAY", "none")},
         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
     )
     try:

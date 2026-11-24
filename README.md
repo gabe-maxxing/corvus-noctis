@@ -2,7 +2,9 @@
 
 A small, live-programming-inspired operating system in Rust. The ARM64 kernel
 starts in a Corvus serial shell with `help`, `about`, `crow`, `clear` and
-`echo`. It has no runtime crate dependencies. The current board is QEMU virt.
+`echo`. It boots to a graphical console (ramfb, 800x600) with a large HELP button
+driven by a virtio tablet, mirroring the serial shell. The current board is
+QEMU virt. Dependencies: THIRD_PARTY.md. Design: docs/graphics.md.
 
 ## Boot
 
@@ -14,7 +16,21 @@ rustup target add aarch64-unknown-none-softfloat
 cargo run --release
 ```
 
-Use Ctrl-C to exit QEMU.
+A QEMU window shows the console; the shell stays on this terminal. Use
+Ctrl-C to exit. `CORVUS_DISPLAY=none cargo run --release` runs headless.
+
+Optional logo animation from your own GIF (gitignored, needs Pillow):
+
+```sh
+python3 tools/gif2frames.py assets/corvus.gif assets/corvus.cvf
+```
+
+Acceptance proof (typed `help` == HELP button click via QMP, saves
+screendumps to target/proof/):
+
+```sh
+python3 tools/prove_pointer.py
+```
 
 ## Try the touch console
 

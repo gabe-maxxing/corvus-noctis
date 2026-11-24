@@ -24,3 +24,11 @@ Integrate one small runnable change at a time, commit it, and show proof from
 QEMU. First acceptance: boot, draw CORVUS, activate Help with a pointer, and
 get the expected output on screen. Report exact commands and observed outputs.
 Keep emulator results, Safari results, and native iPad results explicit.
+
+## Status (2026-11-24)
+
+Done: ramfb console, CORVUS title, bounded logo frames, HELP button via
+virtio tablet into the same dispatcher (`tools/prove_pointer.py` PASS in QEMU
+8.2). Research notes: docs/research/ (gif-frames, holyc-evaluator, ipad-j71).
+Next: CVF RLE/delta per gif-frames.md, CrowC evaluator M1, pongoOS bootargs
+read on J71 (read-only).
