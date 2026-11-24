@@ -93,4 +93,12 @@ fn shell_contract() {
         probe.run_as_typed(&source); take();
     }
 
+    s.run_as_typed("dio"); take(); s.action("help"); let out = take();
+    assert!(out.contains("help  about") && out.ends_with("corvus> "));
+
+    input(&mut s,b"\x1eDIO_STATUS ready\x1f"); assert!(s.dio_online); assert_eq!(take(), "");
+    s.run_as_typed("dio why"); take(); input(&mut s,b"\x1eDIO_STATUS offline\x1f");
+    assert!(!s.dio_online); assert_eq!(take(), "");
+    input(&mut s,b"\x1ethe answer\x1f"); assert!(take().contains("the answer"));
+
 }

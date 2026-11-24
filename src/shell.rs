@@ -8,7 +8,7 @@ pub mod platform;
 #[path = "crowc.rs"]
 mod crowc;
 
-const COMMANDS: &[&str] = &["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit", "time", "uptime", "mem", "color", "banner", "repeat", "sleep", "logo", "lantern"];
+const COMMANDS: &[&str] = &["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit", "time", "uptime", "mem", "color", "banner", "repeat", "sleep", "logo", "lantern", "Draw", "Print", "Vars", "Reset", "Ticks", "let", "if", "while"];
 const HISTORY: usize = 16;
 
 /// One row of Levenshtein state; bounded by the command vocabulary.
@@ -322,9 +322,11 @@ impl Shell {
         if self.receiving {
             if byte == 0x1f {
                 self.receiving = false;
-                if self.waiting {
+                let reply = core::str::from_utf8(&self.reply[..self.reply_len]).unwrap_or("Invalid host reply.");
+                if reply == "DIO_STATUS ready" || reply == "DIO_STATUS offline" {
+                    self.dio_online = reply == "DIO_STATUS ready";
+                } else if self.waiting {
                     self.waiting = false;
-                    let reply = core::str::from_utf8(&self.reply[..self.reply_len]).unwrap_or("Invalid host reply.");
                     self.dio_online = !reply.starts_with("Diogenes offline:");
                     print(reply); print("\n"); self.prompt();
                 }
@@ -365,6 +367,12 @@ impl Shell {
             }
             _ => {}
         }
+    }
+
+    /// Physical buttons leave conversation/continuation before dispatching.
+    pub fn action(&mut self, command: &str) {
+        self.llm_mode = false; self.source_len = 0;
+        self.run_as_typed(command);
     }
 
     /// Runs a command exactly as if it had been typed at the prompt.

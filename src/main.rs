@@ -70,9 +70,15 @@ fn ticks() -> (u64, u64) {
 #[no_mangle]
 extern "C" fn kernel_main() -> ! {
     let display = ramfb::init();
-    let logo = if display { Frames::load() } else { None };
+    let logo = if display { Frames::load().filter(|f| f.width <= 112 && f.height <= 84) } else { None };
     if display {
         let mut console = Console::new();
+        let (start, frequency) = ticks();
+        let mut previous = u64::MAX;
+        while ticks().0.saturating_sub(start) < frequency * 3 / 2 {
+            let elapsed = ticks().0.saturating_sub(start) / (frequency / 1000).max(1);
+            if elapsed / 120 != previous { console.splash(elapsed); previous = elapsed / 120; }
+        }
         console.draw_chrome(logo.as_ref());
         unsafe { *CONSOLE.0.get() = Some(console) };
     }
@@ -97,7 +103,7 @@ extern "C" fn kernel_main() -> ! {
 
     let shell = unsafe { &mut *SHELL.0.get() };
     let (mut x, mut y) = (0u32, 0u32);
-    let mut pressed = false;
+    let mut pressed: Option<&str> = None;
     let mut frame = 0usize;
     let mut next_frame = 0u64;
 
@@ -113,22 +119,18 @@ extern "C" fn kernel_main() -> ! {
                 (EV_ABS, ABS_X) => x = event.value.min(ABS_MAX) * ramfb::WIDTH as u32 / (ABS_MAX + 1),
                 (EV_ABS, ABS_Y) => y = event.value.min(ABS_MAX) * ramfb::HEIGHT as u32 / (ABS_MAX + 1),
                 (EV_KEY, BTN_LEFT | BTN_TOUCH) => {
-                    let inside = Console::hits_help(x as usize, y as usize);
-                    if event.value == 1 && inside {
-                        pressed = true;
-                        if let Some(console) = screen() {
-                            console.draw_help_button(true);
+                    if event.value == 1 && pressed.is_none() {
+                        if let Some(command) = Console::hit_button(x as usize, y as usize) {
+                            pressed = Some(command);
+                            if let Some(console) = screen() { console.draw_button(command,true); }
+                            uart::print("\n[pointer] ");
+                            uart::print(match command { "help" => "HELP", "dio" => "DIO", "crow" => "CROW", _ => "CLEAR" });
+                            uart::print(" pressed at "); uart::print_u32(x); uart::print(","); uart::print_u32(y);
+                            uart::print("\ncorvus> "); shell.action(command);
                         }
-                        uart::print("\n[pointer] HELP pressed at ");
-                        uart::print_u32(x);
-                        uart::print(",");
-                        uart::print_u32(y);
-                        uart::print("\ncorvus> ");
-                        shell.run_as_typed("help");
-                    } else if event.value == 0 && pressed {
-                        pressed = false;
-                        if let Some(console) = screen() {
-                            console.draw_help_button(false);
+                    } else if event.value == 0 {
+                        if let Some(command) = pressed.take() {
+                            if let Some(console) = screen() { console.draw_button(command,false); }
                         }
                     }
                 }
@@ -136,6 +138,7 @@ extern "C" fn kernel_main() -> ! {
             }
         }
 
+        if let Some(console) = screen() { console.update_chrome(now / (frequency / 1000).max(1), shell.dio_online); }
         if let (Some(frames), Some(console)) = (&logo, screen()) {
             if console.logo_requested {
                 console.logo_requested = false; frame = 0; next_frame = 0;

@@ -17,6 +17,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+from proof_image import record
 import time
 from pathlib import Path
 
@@ -26,7 +27,7 @@ PROOF = ROOT / "target/proof"
 PROMPT = b"corvus> "
 ANSI = re.compile(rb"\x1b\[[0-9;]*[A-Za-z]")
 WIDTH, HEIGHT = 800, 600
-HELP_BUTTON = (572, 16, 212, 120)  # keep in sync with src/console.rs
+HELP_BUTTON = (16, 112, 180, 36)  # keep in sync with src/console.rs
 
 
 def read_until(stream, marker, timeout=10):
@@ -91,9 +92,11 @@ def main():
         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
     )
     try:
+        qmp = Qmp(qmp_path)
+        time.sleep(0.4)
+        qmp.call("screendump", filename=str(PROOF / "0-splash.ppm"))
         boot = read_until(vm.stdout, PROMPT)
         print(ANSI.sub(b"", boot).decode().replace("\r", "").rstrip())
-        qmp = Qmp(qmp_path)
         qmp.call("screendump", filename=str(PROOF / "1-boot.ppm"))
 
         vm.stdin.write(b"help\r")
@@ -139,6 +142,30 @@ def main():
         if b"42\r\n" not in response: response += read_until(vm.stdout, PROMPT)
         assert b"42\r\n" in response
         print("PASS: kernel CrowC drawing loop, step limit, continuation cancellation and legacy recovery")
+        def tap(index, prompt=PROMPT):
+            cx, cy = 16 + index * 196 + 90, 130
+            qmp.call("input-send-event", events=[
+                {"type":"abs", "data":{"axis":"x", "value":cx * 0x8000 // WIDTH}},
+                {"type":"abs", "data":{"axis":"y", "value":cy * 0x8000 // HEIGHT}},
+                {"type":"btn", "data":{"down":True, "button":"left"}},
+            ])
+            result = read_until(vm.stdout, prompt)
+            if prompt == PROMPT and result.count(PROMPT) < 2: result += read_until(vm.stdout, prompt)
+            qmp.call("input-send-event", events=[{"type":"btn", "data":{"down":False, "button":"left"}}])
+            time.sleep(0.05)
+            return result
+        assert b"Talk plainly" in tap(1,b"diogenes> ")
+        assert b"help  about" in tap(0)
+        assert b"C O R V U S" in tap(2)
+        assert b"\x1b[2J" in tap(3)
+        vm.stdin.write(b"\x1eDIO_STATUS ready\x1fbanner NOCTIS\r"); vm.stdin.flush()
+        read_until(vm.stdout,PROMPT); time.sleep(0.1)
+        qmp.call("screendump", filename=str(PROOF / "4-buttons-status.ppm"))
+        pixels = (PROOF / "4-buttons-status.ppm").read_bytes().split(b"\n",3)[3]
+        status = b"".join(pixels[(y*WIDTH+650)*3:(y*WIDTH+780)*3] for y in range(574,600))
+        assert bytes.fromhex("8bd19c") in status, "ready status must be painted green"
+        print("PASS: all four physical controls, conversation escape and ready status pixels")
+        for name in ["0-splash", "1-boot", "4-buttons-status"]: record(PROOF / (name + ".ppm"))
     finally:
         vm.terminate()
         vm.wait()
