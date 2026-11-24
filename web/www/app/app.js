@@ -50,7 +50,51 @@ var webCommands = {}; // name -> function(args): commands that live in JS, not i
 export function webCommand(name, fn) { webCommands[name] = fn; }
 
 // Kernel shell commands (src/shell.rs) and the web-only ones, for suggestions.
-export var KNOWN = ["help", "about", "crow", "clear", "echo", "calc", "dio", "tour", "exit"];
+// Same vocabulary as COMMANDS in src/shell.rs, plus the web-only `tour`.
+export var KNOWN = ["help", "about", "crow", "clear", "echo", "calc", "dio", "history", "exit", "tour"];
+
+/// Closest known command (Levenshtein), like the kernel's "Did you mean".
+export function closest(word) {
+  var best = KNOWN[0], distance = Infinity;
+  KNOWN.forEach(function (c) {
+    var row = [];
+    for (var j = 0; j <= c.length; j++) row[j] = j;
+    for (var i = 0; i < word.length; i++) {
+      var diagonal = row[0];
+      row[0] = i + 1;
+      for (var k = 0; k < c.length; k++) {
+        var old = row[k + 1];
+        row[k + 1] = Math.min(row[k] + 1, old + 1, diagonal + (word[i].toLowerCase() === c[k] ? 0 : 1));
+        diagonal = old;
+      }
+    }
+    if (row[c.length] < distance) { distance = row[c.length]; best = c; }
+  });
+  return best;
+}
+
+// History and Tab live in JS for the web console: the kernel's own recall would
+// rewrite its line buffer behind this file's back. Up/Down recall, Tab completes.
+var recallList = [], recallAt = 0, recallDraft = "";
+function remember(text) {
+  if (text && recallList[recallList.length - 1] !== text) recallList.push(text);
+  if (recallList.length > 32) recallList.shift();
+  recallAt = recallList.length;
+}
+function recall(up) {
+  if (!recallList.length) return;
+  if (up && recallAt === recallList.length) recallDraft = line;
+  recallAt = up ? Math.max(0, recallAt - 1) : Math.min(recallList.length, recallAt + 1);
+  prefill(recallAt === recallList.length ? recallDraft : recallList[recallAt]);
+}
+var completeListeners = [];
+export function onComplete(fn) { completeListeners.push(fn); }
+function complete() {
+  if (dioMode || line.indexOf(" ") >= 0) return;
+  var matches = KNOWN.filter(function (c) { return c.indexOf(line) === 0; });
+  if (matches.length === 1) prefill(matches[0] + " ");
+  else if (matches.length > 1) completeListeners.forEach(function (fn) { fn(matches); });
+}
 var dioMode = false; // like the kernel's llm_mode: every line goes to Diogenes until "exit"
 export function inDioMode() { return dioMode; }
 
@@ -60,6 +104,7 @@ function enter() {
   var trimmed = typed.trim();
   var name = trimmed.split(/\s+/)[0];
   line = "";
+  remember(trimmed);
   var handler = null, args = "";
   if (dioMode && trimmed === "exit") { handler = function () { dioMode = false; setPrompt(); }; }
   else if (trimmed.charAt(0) === "?") { handler = webCommands.dio; args = trimmed.slice(1).trim() || "?"; }
@@ -184,7 +229,11 @@ input.addEventListener("input", function () {
   draw();
 });
 input.addEventListener("keydown", function (event) {
-  if (event.key === "Backspace" || event.keyCode === 8) { backspace(); draw(); event.preventDefault(); }
+  var k = event.key || "", code = event.keyCode;
+  if (k === "Backspace" || code === 8) { backspace(); draw(); event.preventDefault(); }
+  else if (k === "ArrowUp" || k === "Up" || code === 38) { recall(true); event.preventDefault(); }
+  else if (k === "ArrowDown" || k === "Down" || code === 40) { recall(false); event.preventDefault(); }
+  else if (k === "Tab" || code === 9) { type(input.value); input.value = ""; complete(); event.preventDefault(); }
 });
 form.addEventListener("submit", function (event) {
   event.preventDefault();

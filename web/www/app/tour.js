@@ -1,7 +1,7 @@
 // Welcome tour (5 steps, tailored to the profile from the download page),
 // the suggestion chips under the console, and `tour` to replay it.
 // Plain ES2017 for iOS 12 Safari. Flow: docs/onboarding.md.
-import { run, prefill, onCommand, openDioMode, webCommand, ready, out, inDioMode } from "./app.js";
+import { run, prefill, onCommand, onComplete, closest, openDioMode, webCommand, ready, out, inDioMode } from "./app.js";
 
 var PROFILE_KEY = "corvus.profile";
 var TOUR_KEY = "corvus.tour";
@@ -44,11 +44,17 @@ chips.addEventListener("click", function (e) {
 onCommand(function (line, name, unknown) {
   if (unknown) {
     // The kernel answers "Unknown command"; offer Diogenes, one tap away.
+    // The kernel says "Did you mean ...? Or just ask Diogenes"; both are one tap here.
+    var guess = closest(name);
     setChips([{ label: "ask dio: " + (line.length > 24 ? line.slice(0, 24) + "…" : line), run: "dio " + line },
-      { label: "help", run: "help" }, { label: "tour", run: "tour" }], true);
+      { label: guess, run: guess + " ", prefill: true }, { label: "dio", run: "dio" }].concat(guess === "help" ? [] : [{ label: "help", run: "help" }]), true);
   } else {
     setTimeout(defaultChips, 0);
   }
+});
+
+onComplete(function (matches) {
+  setChips(matches.map(function (m) { return { label: m, run: m + " ", prefill: true }; }));
 });
 
 // ---- tour -----------------------------------------------------------------
