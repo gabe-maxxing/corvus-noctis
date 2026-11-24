@@ -19,6 +19,12 @@ Web edition (`web/`, not linked into the kernel): wasm-bindgen =0.2.130
 transitive crates, all MIT OR Apache-2.0. `web/www/apple-touch-icon.png` is an
 original mark generated for this repo.
 
+`dio` in the web app loads at runtime, on first use only (not in this repo):
+WebLLM @mlc-ai/web-llm 0.2.89 (Apache-2.0, https://github.com/mlc-ai/web-llm)
+from esm.run, and the model Qwen2.5-0.5B-Instruct-q4f16_1-MLC (Apache-2.0,
+Qwen team; MLC build from https://huggingface.co/mlc-ai). Fallback: the user's
+own Ollama on localhost. Diogenes quotes: Hicks 1925 translation, public domain.
+
 Bitmap font: embedded-graphics' built-in mono fonts are generated from public
 domain BDF fonts in the XOrg project (embedded-graphics `MIGRATING-0.6-0.7.md`).
 

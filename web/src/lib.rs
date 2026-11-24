@@ -67,7 +67,15 @@ pub fn boot() {
     unsafe { *CONSOLE.0.get() = Some(console) };
     state().logo = logo;
     banner();
+    print("web edition: try  calc 6*7  or  dio what is virtue?\n");
     print("corvus> ");
+}
+
+/// Prints text straight to the console, for web-only commands such as `dio`
+/// that run in JavaScript. Non-ASCII is the caller's job.
+#[wasm_bindgen]
+pub fn write(text: &str) {
+    print(text);
 }
 
 #[wasm_bindgen]

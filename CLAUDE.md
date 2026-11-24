@@ -33,6 +33,8 @@ virtio tablet into the same dispatcher (`tools/prove_pointer.py` PASS in QEMU
 Shell: `calc <expr>` (src/calc.rs); dispatcher + line editor moved to
 src/shell.rs so the kernel and web/ share them. Web edition: web/ (wasm,
 canvas, touch HELP, iPad meta), CI + Pages workflows, MIT LICENSE.
-Next: rebase onto Codex's CVF2 main, Pages live, then the ship loop
-(button bar, fullscreen, web logo, download page, calc history). pongoOS
-bootargs on J71 stays read-only.
+Get page (device-aware downloads), install.sh / Corvus-mac.zip /
+Corvus-windows.zip on the nightly release (release.yml), `dio` in the web app
+(WebLLM, Ollama fallback), diogenes/ persona + voice + X import.
+Rule: src/ is Codex's; web-only features live in web/ and JS.
+Next: Codex's CVF2 main (a3bad0a) onto this history, Pages enabled.

@@ -15,7 +15,10 @@ desktop builds run Corvus in a QEMU VM; downloads come from the `nightly`
 release, rebuilt by `.github/workflows/release.yml` after every green CI run.
 
 The web app (`/app/`) is the same console, shell and `calc` compiled to wasm
-(iPad Safari: Share -> Add to Home Screen for fullscreen). Build locally:
+(iPad Safari: Share -> Add to Home Screen for fullscreen). `dio <question>`
+asks Diogenes (persona: diogenes/DIOGENES.md): WebLLM in the browser by
+default (WebGPU; the small model downloads once), or your local Ollama
+(`OLLAMA_ORIGINS=* ollama serve`). Build locally:
 
 ```sh
 rustup target add wasm32-unknown-unknown
