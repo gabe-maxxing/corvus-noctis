@@ -135,6 +135,10 @@ extern "C" fn kernel_main() -> ! {
         }
 
         if let (Some(frames), Some(console)) = (&logo, screen()) {
+            if console.logo_requested {
+                console.logo_requested = false; frame = 0; next_frame = 0;
+                console.frame(frames, 0);
+            }
             if frames.count > 1 {
                 let (now, frequency) = ticks();
                 if now >= next_frame {
