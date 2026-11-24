@@ -24,8 +24,7 @@ pub fn render(effect: Effect<'_>) {
 extern "C" {
     #[wasm_bindgen::prelude::wasm_bindgen(js_namespace = performance, js_name = now)]
     fn browser_now() -> f64;
-    #[wasm_bindgen::prelude::wasm_bindgen(js_name = setTimeout)]
-    fn timeout(callback: &wasm_bindgen::JsValue, ms: i32);
+
 }
 
 pub fn clock(fallback: u64) -> u64 {
@@ -35,12 +34,19 @@ pub fn clock(fallback: u64) -> u64 {
     { fallback }
 }
 
+// A primitive-only host import preserves MVP wasm; Rust Closure/JsValue
+// callbacks introduce reference-type tables that old Safari cannot execute.
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen(inline_js = "import { corvus_timer_tick } from '../../corvus_web.js'; export function corvus_wake(ms) { setTimeout(corvus_timer_tick, ms); }")]
+extern "C" { fn corvus_wake(ms: f64); }
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn corvus_timer_tick() { crate::shell().tick(clock(0)); }
+
 pub fn wake_after(ms: u64) {
     #[cfg(target_arch = "wasm32")]
-    {
-        let callback = wasm_bindgen::closure::Closure::once_into_js(|| crate::shell().tick(clock(0)));
-        timeout(&callback, ms.min(i32::MAX as u64) as i32);
-    }
+    corvus_wake(ms as f64);
     #[cfg(not(target_arch = "wasm32"))]
     { let _ = ms; }
 }
